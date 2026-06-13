@@ -24,6 +24,10 @@ jobs:
       working-directory: electron-app
       run: npm ci
 
+    - name: Run Linter
+      working-directory: electron-app
+      run: npm run lint
+
     - name: Run Unit Tests
       working-directory: electron-app
       run: npm run test:unit
