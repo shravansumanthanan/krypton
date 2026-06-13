@@ -13,11 +13,33 @@ const {
   shell,
   webContents,
   dialog,
+  globalShortcut,
 } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
+const crypto = require('crypto');
 const log = require('electron-log');
+
+// ═══ Burner Session Initialization ═══
+const burnerTempDir = path.join(
+  os.tmpdir(),
+  `krypton-burner-${crypto.randomBytes(8).toString('hex')}`,
+);
+fs.mkdirSync(burnerTempDir, { recursive: true });
+app.setPath('userData', burnerTempDir);
+
+function shredSessionData() {
+  if (fs.existsSync(burnerTempDir)) {
+    try {
+      log.info(`[KryptonBrowser] Shredding burner session data at ${burnerTempDir}`);
+      fs.rmSync(burnerTempDir, { recursive: true, force: true });
+    } catch (e) {
+      log.error(`[KryptonBrowser] Failed to shred session data: ${e.message}`);
+    }
+  }
+}
 
 // ═══ PQC Engine ═══
 const pqcEngine = require('./pqc-engine');
@@ -27,6 +49,8 @@ const pqcEngine = require('./pqc-engine');
 app.commandLine.appendSwitch('enable-features', 'PostQuantumKeyAgreement,UseMLKEM');
 app.commandLine.appendSwitch('enable-quic');
 app.commandLine.appendSwitch('site-per-process');
+// Enforce minimum TLS 1.3 to prevent downgrade attacks and ensure PQC can be negotiated
+app.commandLine.appendSwitch('ssl-version-min', 'tls1.3');
 
 let mainWindow;
 
@@ -170,6 +194,7 @@ function createWindow() {
     titleBarStyle: 'hiddenInset',
     trafficLightPosition: { x: 12, y: 12 },
     webPreferences: {
+      partition: 'burner-session',
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
@@ -274,7 +299,7 @@ function setupRequestInterception(ses) {
     // Enforce strict CSP for local files (the main UI)
     if (details.url.startsWith('file://')) {
       headers['Content-Security-Policy'] = [
-        "default-src 'self'; script-src 'self'; img-src 'self' https: data: blob:; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; connect-src 'self' https:;"
+        "default-src 'self'; script-src 'self'; img-src 'self' https: data: blob:; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; connect-src 'self' https:;",
       ];
     }
 
@@ -518,7 +543,7 @@ ipcMain.handle('get-security-info', async (e, urlStr) => {
 const downloads = [];
 
 function setupDownloadManager() {
-  session.defaultSession.on('will-download', (e, item) => {
+  session.fromPartition('burner-session').on('will-download', (e, item) => {
     const askLocation = getConfig('krypton_ask_download_loc', 'false') === 'true';
     const fileName = item.getFilename();
     if (!askLocation) {
@@ -597,7 +622,7 @@ ipcMain.handle('choose-download-path', async () => {
 // Session / Private mode
 ipcMain.handle('clear-session-data', async () => {
   try {
-    const ses = session.defaultSession;
+    const ses = session.fromPartition('burner-session');
     await ses.clearStorageData({ storages: ['cookies', 'cachestorage', 'serviceworkers'] });
     await ses.clearCache();
     return true;
@@ -743,6 +768,16 @@ app.whenReady().then(async () => {
   createWindow();
   setupDownloadManager();
 
+  // Register Panic Button
+  globalShortcut.register('CommandOrControl+Shift+Escape', () => {
+    log.warn('[KryptonBrowser] PANIC BUTTON TRIGGERED!');
+    BrowserWindow.getAllWindows().forEach((win) => {
+      if (!win.isDestroyed()) win.destroy();
+    });
+    shredSessionData();
+    app.quit();
+  });
+
   // Check for updates
   autoUpdater.checkForUpdatesAndNotify();
 
@@ -753,6 +788,14 @@ app.whenReady().then(async () => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
+});
+
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll();
+});
+
+app.on('before-quit', () => {
+  shredSessionData();
 });
 
 // ═══ Global Error Handlers ═══
