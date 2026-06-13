@@ -30,13 +30,77 @@ const burnerTempDir = path.join(
 fs.mkdirSync(burnerTempDir, { recursive: true });
 app.setPath('userData', burnerTempDir);
 
-function shredSessionData() {
-  if (fs.existsSync(burnerTempDir)) {
+let isShredded = false;
+let shredPromise = null;
+
+async function secureWipeFilesAsync(dirPath) {
+  if (!fs.existsSync(dirPath)) return;
+  const stat = await fs.promises.stat(dirPath);
+  if (stat.isDirectory()) {
+    const files = await fs.promises.readdir(dirPath);
+    for (const file of files) {
+      await secureWipeFilesAsync(path.join(dirPath, file));
+    }
+  } else {
     try {
-      log.info(`[KryptonBrowser] Shredding burner session data at ${burnerTempDir}`);
-      fs.rmSync(burnerTempDir, { recursive: true, force: true });
+      const fd = await fs.promises.open(dirPath, 'r+');
+      const size = stat.size;
+
+      // Pass 1: Zeros
+      let buffer = Buffer.alloc(size, 0);
+      await fd.write(buffer, 0, size, 0);
+      await fd.datasync();
+
+      // Pass 2: Ones
+      buffer = Buffer.alloc(size, 255);
+      await fd.write(buffer, 0, size, 0);
+      await fd.datasync();
+
+      // Pass 3: Random
+      buffer = crypto.randomBytes(size);
+      await fd.write(buffer, 0, size, 0);
+      await fd.datasync();
+
+      await fd.close();
+
+      // Rename to random string before deletion
+      const randomName = crypto.randomBytes(16).toString('hex');
+      const newPath = path.join(path.dirname(dirPath), randomName);
+      await fs.promises.rename(dirPath, newPath);
     } catch (e) {
-      log.error(`[KryptonBrowser] Failed to shred session data: ${e.message}`);
+      // ignore
+    }
+  }
+}
+
+async function shredSessionDataAsync() {
+  if (isShredded) return;
+  if (shredPromise) return shredPromise;
+
+  if (fs.existsSync(burnerTempDir)) {
+    shredPromise = (async () => {
+      try {
+        log.info(`[KryptonBrowser] Forensic wipe starting for burner session at ${burnerTempDir}`);
+        await secureWipeFilesAsync(burnerTempDir);
+        fs.rmSync(burnerTempDir, { recursive: true, force: true });
+        isShredded = true;
+        log.info('[KryptonBrowser] Forensic wipe complete.');
+      } catch (e) {
+        log.error(`[KryptonBrowser] Failed to shred session data: ${e.message}`);
+      }
+    })();
+    await shredPromise;
+  }
+}
+
+function sendToActiveWindow(channel, ...args) {
+  const focused = BrowserWindow.getFocusedWindow();
+  if (focused) {
+    focused.webContents.send(channel, ...args);
+  } else {
+    const windows = BrowserWindow.getAllWindows();
+    if (windows.length > 0) {
+      windows[0].webContents.send(channel, ...args);
     }
   }
 }
@@ -209,6 +273,10 @@ function createWindow() {
   mainWindow.loadFile(path.join(__dirname, '../../build/index.html'));
   mainWindow.once('ready-to-show', () => mainWindow.show());
 
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+  });
+
   mainWindow.webContents.on('console-message', (event, level, message) => {
     const tags = ['LOG', 'WARN', 'ERROR'];
     if (level > 0) log.info(`[Renderer ${tags[level] || 'INFO'}] ${message}`);
@@ -345,7 +413,9 @@ function setupRequestInterception(ses) {
 }
 
 // ═══ File-Based Config ═══
-const CONFIG_FILE = path.join(app.getPath('userData'), 'krypton_config.json');
+const persistentDataPath = path.join(app.getPath('appData'), 'KryptonBrowser');
+if (!fs.existsSync(persistentDataPath)) fs.mkdirSync(persistentDataPath, { recursive: true });
+const CONFIG_FILE = path.join(persistentDataPath, 'krypton_config.json');
 let _configCache = null;
 
 function loadConfigFile() {
@@ -386,6 +456,7 @@ const ALLOWED_CONFIG_KEYS = new Set([
   'krypton_send_dnt',
   'krypton_block_cookies',
   'krypton_ask_download_loc',
+  'krypton_panic_shortcut',
 ]);
 
 // Config sync
@@ -643,7 +714,7 @@ function createMenu() {
           {
             label: 'PQC Security Panel',
             accelerator: 'CmdOrCtrl+Shift+P',
-            click: () => mainWindow?.webContents.send('navigate-to', 'krypton://pqc-security'),
+            click: () => sendToActiveWindow('navigate-to', 'krypton://pqc-security'),
           },
           { type: 'separator' },
           { role: 'hide' },
@@ -658,29 +729,29 @@ function createMenu() {
           {
             label: 'New Tab',
             accelerator: 'CmdOrCtrl+T',
-            click: () => mainWindow?.webContents.send('new-tab'),
+            click: () => sendToActiveWindow('new-tab'),
           },
           {
             label: 'New Private Window',
             accelerator: 'CmdOrCtrl+Shift+N',
-            click: () => mainWindow?.webContents.send('menu-action', 'private-window'),
+            click: () => sendToActiveWindow('menu-action', 'private-window'),
           },
           {
             label: 'Close Tab',
             accelerator: 'CmdOrCtrl+W',
-            click: () => mainWindow?.webContents.send('close-tab'),
+            click: () => sendToActiveWindow('close-tab'),
           },
           { type: 'separator' },
           {
             label: 'Open Location',
             accelerator: 'CmdOrCtrl+L',
-            click: () => mainWindow?.webContents.send('focus-url-bar'),
+            click: () => sendToActiveWindow('focus-url-bar'),
           },
           { type: 'separator' },
           {
             label: 'Find in Page',
             accelerator: 'CmdOrCtrl+F',
-            click: () => mainWindow?.webContents.send('toggle-find-bar'),
+            click: () => sendToActiveWindow('toggle-find-bar'),
           },
         ],
       },
@@ -702,23 +773,23 @@ function createMenu() {
           {
             label: 'Reload',
             accelerator: 'CmdOrCtrl+R',
-            click: () => mainWindow?.webContents.send('reload-page'),
+            click: () => sendToActiveWindow('reload-page'),
           },
           { type: 'separator' },
           {
             label: 'Toggle Sidebar',
             accelerator: 'CmdOrCtrl+B',
-            click: () => mainWindow?.webContents.send('menu-action', 'toggle-sidebar'),
+            click: () => sendToActiveWindow('menu-action', 'toggle-sidebar'),
           },
           {
             label: 'Reader Mode',
             accelerator: 'CmdOrCtrl+Shift+R',
-            click: () => mainWindow?.webContents.send('menu-action', 'reader-mode'),
+            click: () => sendToActiveWindow('menu-action', 'reader-mode'),
           },
           {
             label: 'Shields Panel',
             accelerator: 'CmdOrCtrl+Shift+S',
-            click: () => mainWindow?.webContents.send('menu-action', 'toggle-shields'),
+            click: () => sendToActiveWindow('menu-action', 'toggle-shields'),
           },
           { type: 'separator' },
           { role: 'toggleDevTools' },
@@ -736,18 +807,18 @@ function createMenu() {
           {
             label: 'PQC Security Panel',
             accelerator: 'CmdOrCtrl+Shift+P',
-            click: () => mainWindow?.webContents.send('navigate-to', 'krypton://pqc-security'),
+            click: () => sendToActiveWindow('navigate-to', 'krypton://pqc-security'),
           },
           { type: 'separator' },
           {
             label: 'View Connection Security',
-            click: () => mainWindow?.webContents.send('show-security-info'),
+            click: () => sendToActiveWindow('show-security-info'),
           },
           { type: 'separator' },
           {
             label: 'Clear Browsing Data',
             accelerator: 'CmdOrCtrl+Shift+Delete',
-            click: () => mainWindow?.webContents.send('clear-browsing-data'),
+            click: () => sendToActiveWindow('clear-browsing-data'),
           },
         ],
       },
@@ -760,6 +831,34 @@ function createMenu() {
 }
 
 // ═══ App Lifecycle ═══
+let isQuitting = false;
+
+function triggerPanic() {
+  log.warn('[KryptonBrowser] PANIC BUTTON TRIGGERED!');
+  BrowserWindow.getAllWindows().forEach((win) => {
+    if (!win.isDestroyed()) win.destroy();
+  });
+  shredSessionDataAsync().then(() => {
+    isQuitting = true;
+    app.quit();
+  });
+}
+
+ipcMain.handle('set-panic-shortcut', async (e, shortcutStr) => {
+  if (typeof shortcutStr !== 'string' || shortcutStr.length > 64) return false;
+  const oldShortcut = getConfig('krypton_panic_shortcut', 'CommandOrControl+Shift+Escape');
+  globalShortcut.unregister(oldShortcut);
+  try {
+    const success = globalShortcut.register(shortcutStr, triggerPanic);
+    if (!success) throw new Error('Failed to register shortcut');
+    setConfig('krypton_panic_shortcut', shortcutStr);
+    return true;
+  } catch (err) {
+    globalShortcut.register(oldShortcut, triggerPanic);
+    return false;
+  }
+});
+
 app.whenReady().then(async () => {
   await pqcEngine.init(); // Load ESM PQC modules before anything else
   loadBlocklist();
@@ -769,14 +868,8 @@ app.whenReady().then(async () => {
   setupDownloadManager();
 
   // Register Panic Button
-  globalShortcut.register('CommandOrControl+Shift+Escape', () => {
-    log.warn('[KryptonBrowser] PANIC BUTTON TRIGGERED!');
-    BrowserWindow.getAllWindows().forEach((win) => {
-      if (!win.isDestroyed()) win.destroy();
-    });
-    shredSessionData();
-    app.quit();
-  });
+  const panicShortcut = getConfig('krypton_panic_shortcut', 'CommandOrControl+Shift+Escape');
+  globalShortcut.register(panicShortcut, triggerPanic);
 
   // Check for updates
   autoUpdater.checkForUpdatesAndNotify();
@@ -794,15 +887,23 @@ app.on('will-quit', () => {
   globalShortcut.unregisterAll();
 });
 
-app.on('before-quit', () => {
-  shredSessionData();
+app.on('before-quit', (e) => {
+  if (isQuitting) return; // Allow quit
+  e.preventDefault(); // Prevent immediate quit
+  shredSessionDataAsync().then(() => {
+    isQuitting = true;
+    app.quit();
+  });
 });
 
 // ═══ Global Error Handlers ═══
 process.on('uncaughtException', (err) => {
   log.error('[KryptonBrowser] CRITICAL: Uncaught Exception:', err);
   dialog.showErrorBox('Critical Error', 'A critical error occurred. Check the logs for details.');
-  app.quit();
+  shredSessionDataAsync().then(() => {
+    isQuitting = true;
+    app.quit();
+  });
 });
 
 process.on('unhandledRejection', (reason, promise) => {
