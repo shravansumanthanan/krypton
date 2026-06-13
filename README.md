@@ -1,13 +1,24 @@
 # KryptonBrowser
 
-> A hardened, zero-trust Electron browser built for post-quantum security environments featuring FIPS-compliant ML-KEM-768 and ML-DSA-65.
+> A privacy-first, zero-trust Electron browser built for the general public to defend against post-quantum surveillance and local forensic analysis.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Build Status](https://github.com/kryptonbrowser/krypton/actions/workflows/build.yml/badge.svg)](https://github.com/kryptonbrowser/krypton/actions/workflows/build.yml)
 
 ## Why This Exists
 
-Classical cryptography is vulnerable to "Store-Now-Decrypt-Later" attacks where adversaries harvest encrypted data today to decrypt once quantum computers become available. KryptonBrowser provides an Army-grade, defense-in-depth enclave that natively integrates post-quantum cryptography (PQC) alongside strict zero-trust runtime restrictions. It guarantees that highly sensitive communications and data remain impenetrable against both current and future cryptographic threats.
+Classical cryptography is vulnerable to "Store-Now-Decrypt-Later" attacks, where adversaries harvest encrypted data today to decrypt once quantum computers become available. Furthermore, local device forensics can often expose browsing habits even after standard deletion. 
+
+KryptonBrowser brings defense-in-depth to the general public. It seamlessly integrates post-quantum cryptography (PQC) alongside ephemeral burner sessions and multi-pass secure wiping, guaranteeing that sensitive communications and browsing data remain impenetrable against both current forensic tools and future quantum cryptographic threats.
+
+## Key Features
+
+- **Post-Quantum Cryptography:** Natively features FIPS-compliant ML-KEM-768 and ML-DSA-65 algorithms.
+- **Ephemeral Burner Sessions:** User data (cache, cookies, local storage) is stored in a volatile directory isolated from your main system.
+- **Panic Button:** Configurable global shortcut (default `CommandOrControl+Shift+Escape`) that instantly wipes data and terminates the application.
+- **Multi-Pass Secure Wipe:** Performs asynchronous 3-pass wiping (zeros, ones, random data) with filename obfuscation to defeat advanced file recovery techniques.
+- **Hardened Main Process:** Protected against Server-Side Request Forgery (SSRF), Path Traversal, and strict window management protocol limitations (restricting `file://`).
+- **O(1) Content Blocking:** High-performance, categorized blocking for ads, trackes, malware, and fingerprinting domains.
 
 ## Quick Start
 
@@ -38,23 +49,14 @@ Run the browser in development mode with UI bundling and hot module replacement:
 npm start
 ```
 
-### Code Quality & Formatting
-
-Maintain production-grade code quality using the built-in linting and formatting tools:
-
-```bash
-npm run lint    # Run ESLint to identify code quality issues
-npm run format  # Run Prettier to automatically format code
-```
-
 ### Configuration
 
-KryptonBrowser's security features are configurable via modular JSON files and environment constraints.
+KryptonBrowser's security features are configurable via modular JSON files. Your preferences persist, while your browsing data remains ephemeral.
 
 | Configuration File | Location | Description |
 |--------|------|-------------|
+| `krypton_config.json` | `~/Library/Application Support/KryptonBrowser/` | User preferences including the Panic Button shortcut and HTTPS Upgrades. |
 | `blocklist.json` | `electron-app/blocklist.json` | O(1) hostname blocking definitions categorized by `ads`, `trackers`, `malware`, and `fingerprinting`. |
-| `vite.config.js` | `electron-app/vite.config.js` | UI bundling rules, dead-code elimination, and asset minification settings. |
 
 ### Advanced Usage: Building for Production
 
@@ -70,16 +72,16 @@ npm run build
 
 ## Testing
 
-KryptonBrowser is validated through rigorous automated testing covering the cryptographic engine, URL blocking, and end-to-end browser flows.
+KryptonBrowser is validated through rigorous automated testing covering the cryptographic engine, URL blocking, ephemeral session management, and end-to-end browser flows.
 
 ### Unit Tests
-Tests the pure ESM Post-Quantum Cryptography implementations and memory-leak-free blocklist parsers.
+Tests the pure ESM Post-Quantum Cryptography implementations, memory-leak-free blocklist parsers, and path validators.
 ```bash
 npm run test:unit
 ```
 
 ### End-to-End (E2E) Tests
-Simulates real browser usage, UI state transitions, and context menu behaviors using Playwright.
+Simulates real browser usage, UI state transitions, and verifies the Panic Button and secure wipe handlers using Playwright.
 ```bash
 npm run test:e2e
 ```
