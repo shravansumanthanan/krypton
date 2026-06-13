@@ -11,8 +11,6 @@ Classical cryptography is vulnerable to "Store-Now-Decrypt-Later" attacks where 
 
 ## Quick Start
 
-Launch the browser locally with full PQC enforcement and content blocking enabled.
-
 ```bash
 git clone https://github.com/kryptonbrowser/krypton.git
 cd krypton/electron-app
@@ -22,10 +20,7 @@ npm start
 
 ## Installation
 
-**Prerequisites**: 
-- Node.js 20+
-- npm 10+
-- macOS (for `dmg`/`app` packaging)
+**Prerequisites**: Node.js 20+, npm 10+, macOS (for `dmg`/`app` packaging)
 
 ```bash
 git clone https://github.com/kryptonbrowser/krypton.git
@@ -37,10 +32,19 @@ npm install
 
 ### Local Development
 
-To run the browser in development mode (which automatically bundles the UI using Vite and enables hot module replacement):
+Run the browser in development mode with UI bundling and hot module replacement:
 
 ```bash
 npm start
+```
+
+### Code Quality & Formatting
+
+Maintain production-grade code quality using the built-in linting and formatting tools:
+
+```bash
+npm run lint    # Run ESLint to identify code quality issues
+npm run format  # Run Prettier to automatically format code
 ```
 
 ### Configuration
@@ -54,7 +58,7 @@ KryptonBrowser's security features are configurable via modular JSON files and e
 
 ### Advanced Usage: Building for Production
 
-We use `electron-builder` to package the application into a redistributable, production-ready format.
+Package the application into a redistributable, production-ready format using `electron-builder`.
 
 ```bash
 # Build the Mac app directory (for testing the production bundle without packaging)
