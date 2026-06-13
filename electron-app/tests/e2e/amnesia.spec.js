@@ -37,7 +37,7 @@ test.describe('Krypton Ephemeral Burner Session', () => {
     expect(fs.existsSync(userDataPath)).toBe(false);
   });
 
-  test('Panic Button: is globally registered', async () => {
+  test('Panic Button: is globally registered and dynamically updateable via IPC', async () => {
     const electronApp = await electron.launch({
       args: [path.join(__dirname, '../../src/main', 'main.js')],
     });
@@ -45,13 +45,32 @@ test.describe('Krypton Ephemeral Burner Session', () => {
     const window = await electronApp.firstWindow();
     await window.locator('#url-bar').waitFor();
 
-    // In Playwright we cannot easily simulate OS-level global shortcuts.
-    // We verify the shortcut is registered.
-    const isRegistered = await electronApp.evaluate(({ globalShortcut }) => {
+    // Verify default shortcut
+    let isRegistered = await electronApp.evaluate(({ globalShortcut }) => {
       return globalShortcut.isRegistered('CommandOrControl+Shift+Escape');
     });
-
     expect(isRegistered).toBe(true);
+
+    // Update via IPC handler
+    const setSuccess = await electronApp.evaluate(({ ipcMain }) => {
+      // Simulate renderer IPC call
+      const handlers = ipcMain._invokeHandlers;
+      const setPanicHandler = handlers.get('set-panic-shortcut');
+      if (!setPanicHandler) return false;
+      return setPanicHandler(null, 'CommandOrControl+Shift+P');
+    });
+    expect(setSuccess).toBe(true);
+
+    // Verify old is unregistered, new is registered
+    const oldRegistered = await electronApp.evaluate(({ globalShortcut }) => {
+      return globalShortcut.isRegistered('CommandOrControl+Shift+Escape');
+    });
+    expect(oldRegistered).toBe(false);
+
+    const newRegistered = await electronApp.evaluate(({ globalShortcut }) => {
+      return globalShortcut.isRegistered('CommandOrControl+Shift+P');
+    });
+    expect(newRegistered).toBe(true);
 
     await electronApp.close();
   });
