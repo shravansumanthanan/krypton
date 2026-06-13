@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; img-src 'self' https: data: blob:; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; connect-src 'self' https:;">
+    <title>KryptonBrowser</title>
+    <link rel="stylesheet" href="browser-chrome.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <!-- ═══ Tab Bar ═══ -->
+    <div class="tab-bar" id="tab-bar">
+        <div class="tabs-scroll" id="tabs-container">
+            <!-- Tabs injected by JS -->
+            <button class="tab-new-btn" id="btn-new-tab" title="New Tab (⌘T)">
+                <span class="material-icons-outlined">add</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- ═══ Navigation Bar ═══ -->
+    <div class="nav-bar" id="nav-bar">
+        <div class="nav-controls">
+            <button class="nav-btn" id="btn-back" title="Back" disabled>
+                <span class="material-icons-outlined">arrow_back</span>
+            </button>
+            <button class="nav-btn" id="btn-forward" title="Forward" disabled>
+                <span class="material-icons-outlined">arrow_forward</span>
+            </button>
+            <button class="nav-btn" id="btn-reload" title="Reload">
+                <span class="material-icons-outlined" id="reload-icon">refresh</span>
+            </button>
+        </div>
+
+        <div class="url-bar" id="url-bar">
+            <div class="security-indicator" id="security-indicator" title="Connection security">
+                <span class="material-icons-outlined" id="lock-icon">lock</span>
+            </div>
+            <input type="text" id="url-input" placeholder="Search or enter web address" spellcheck="false"
+                autocomplete="off">
+            <div class="pqc-badge" id="pqc-badge" title="PQC quantum-secure connection">
+                <span>PQC</span>
+            </div>
+            <button class="bookmark-btn" id="btn-bookmark" title="Bookmark this page (⌘D)">
+                <span class="material-icons-outlined" id="bookmark-icon">bookmark_border</span>
+            </button>
+        </div>
+
+        <!-- Autocomplete dropdown -->
+        <div class="autocomplete-dropdown" id="autocomplete-dropdown" style="display:none;"></div>
+
+        <div class="nav-actions">
+            <!-- Reader mode -->
+            <button class="nav-btn reader-mode-btn" id="btn-reader-mode" title="Reader Mode (⌘⇧R)"
+                style="display:none;">
+                <span class="material-icons-outlined">chrome_reader_mode</span>
+            </button>
+            <!-- Ad block shield badge -->
+            <div class="shield-badge-wrap" id="shield-badge-wrap" title="KryptonShield — Requests blocked">
+                <button class="nav-btn shield-nav-btn" id="btn-shield">
+                    <span class="material-icons-outlined">security</span>
+                    <span class="shield-count" id="shield-count">0</span>
+                </button>
+            </div>
+            <button class="nav-btn" id="btn-downloads" title="Downloads (⌥⌘L)">
+                <span class="material-icons-outlined">download</span>
+            </button>
+            <button class="nav-btn" id="btn-extensions" title="Extensions">
+                <span class="material-icons-outlined">extension</span>
+            </button>
+            <button class="nav-btn" id="btn-security-panel" title="PQC Security Panel (⌘⇧P)">
+                <span class="material-icons-outlined">shield</span>
+            </button>
+            <!-- Sidebar toggle -->
+            <button class="nav-btn" id="btn-sidebar" title="Sidebar (⌘B)">
+                <span class="material-icons-outlined">side_navigation</span>
+            </button>
+            <button class="nav-btn" id="btn-menu" title="Menu">
+                <span class="material-icons-outlined">menu</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- ═══ Bookmarks Bar ═══ -->
+    <div class="bookmarks-bar" id="bookmarks-bar">
+        <div class="bookmarks-list" id="bookmarks-list">
+            <!-- Bookmark items injected by JS -->
+        </div>
+    </div>
+
+    <!-- ═══ Find Bar (hidden by default) ═══ -->
+    <div class="find-bar" id="find-bar" style="display:none;">
+        <span class="material-icons-outlined find-bar-icon">search</span>
+        <input type="text" class="find-bar-input" id="find-input" placeholder="Find in page…" autocomplete="off"
+            spellcheck="false">
+        <span class="find-bar-count" id="find-count"></span>
+        <div class="find-bar-actions">
+            <button class="find-bar-btn" id="find-prev" title="Previous (Shift+Enter)">
+                <span class="material-icons-outlined">expand_less</span>
+            </button>
+            <button class="find-bar-btn" id="find-next" title="Next (Enter)">
+                <span class="material-icons-outlined">expand_more</span>
+            </button>
+            <button class="find-bar-btn find-bar-close" id="find-close" title="Close (Escape)">
+                <span class="material-icons-outlined">close</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- ═══ Loading Bar ═══ -->
+    <div class="loading-bar" id="loading-bar">
+        <div class="loading-progress" id="loading-progress"></div>
+    </div>
+
+    <!-- ═══ Webview Container ═══ -->
+    <div class="webview-container" id="webview-container">
+        <!-- Webview tags are created dynamically by JS -->
+    </div>
+
+    <!-- ═══ Context Menu (custom, floats over page) ═══ -->
+    <div class="ctx-menu" id="ctx-menu" style="display:none;"></div>
+
+    <!-- ═══ Permission Dialog ═══ -->
+    <div class="permission-overlay" id="permission-overlay" style="display:none;">
+        <div class="permission-dialog">
+            <div class="permission-icon" id="perm-icon"><span class="material-icons-outlined">security</span></div>
+            <div class="permission-title" id="perm-title">Permission Request</div>
+            <div class="permission-origin" id="perm-origin"></div>
+            <div class="permission-desc" id="perm-desc"></div>
+            <div class="permission-actions">
+                <button class="permission-btn permission-deny" id="perm-deny">Deny</button>
+                <button class="permission-btn permission-allow" id="perm-allow">Allow</button>
+            </div>
+            <div class="permission-note">
+                <span class="material-icons-outlined">info</span>
+                KryptonBrowser blocks sensitive permissions by default for security.
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ Security Info Popup ═══ -->
+    <div class="security-popup" id="security-popup" style="display:none;">
+        <div class="popup-header">
+            <span class="material-icons-outlined popup-lock" id="popup-lock-icon">lock</span>
+            <div>
+                <div class="popup-title" id="popup-title">Connection is secure</div>
+                <div class="popup-subtitle" id="popup-subtitle">Post-quantum encryption active</div>
+            </div>
+        </div>
+        <div class="popup-details">
+            <div class="popup-row"><span class="popup-label">Protocol</span><span class="popup-value"
+                    id="popup-protocol">TLS 1.3</span></div>
+            <div class="popup-row"><span class="popup-label">Key Exchange</span><span class="popup-value"
+                    id="popup-kem">X25519+ML-KEM-768</span></div>
+            <div class="popup-row"><span class="popup-label">Cipher</span><span class="popup-value"
+                    id="popup-cipher">AES-256-GCM</span></div>
+            <div class="popup-row"><span class="popup-label">PQC Status</span><span class="popup-value pqc-active"
+                    id="popup-pqc">Active</span></div>
+            <div class="popup-row"><span class="popup-label">Blocked</span><span class="popup-value"
+                    id="popup-blocked">0 trackers</span></div>
+        </div>
+        <button class="popup-btn" id="btn-popup-details">
+            <span class="material-icons-outlined">shield</span>
+            Open PQC Security Panel
+        </button>
+    </div>
+
+    <!-- ═══ Browser Menu (Brave-style) ═══ -->
+    <div class="browser-menu" id="browser-menu" style="display:none;">
+        <div class="menu-section">
+            <div class="menu-item" data-action="new-tab"><span class="material-icons-outlined">add</span>New Tab<span
+                    class="menu-shortcut">⌘T</span></div>
+            <div class="menu-item" data-action="new-window"><span class="material-icons-outlined">open_in_new</span>New
+                Window<span class="menu-shortcut">⌘N</span></div>
+            <div class="menu-item" data-action="private-window"><span
+                    class="material-icons-outlined">visibility_off</span>New Private Window<span
+                    class="menu-shortcut">⌘⇧N</span></div>
+        </div>
+        <div class="menu-divider"></div>
+        <div class="menu-section">
+            <div class="menu-item" data-action="pqc-panel"><span class="material-icons-outlined">shield</span>PQC
+                Security Panel</div>
+            <div class="menu-item" data-action="shield-toggle"><span
+                    class="material-icons-outlined">security</span>KryptonShield
+                <span class="menu-badge-green" id="shield-menu-badge">ON</span>
+            </div>
+        </div>
+        <div class="menu-divider"></div>
+        <div class="menu-section">
+            <div class="menu-item" data-action="history"><span
+                    class="material-icons-outlined">history</span>History<span class="menu-chevron">›</span></div>
+            <div class="menu-item" data-action="bookmarks"><span
+                    class="material-icons-outlined">bookmark</span>Bookmarks<span class="menu-chevron">›</span></div>
+            <div class="menu-item" data-action="downloads"><span
+                    class="material-icons-outlined">download</span>Downloads<span class="menu-shortcut">⌥⌘L</span></div>
+            <div class="menu-item" data-action="extensions"><span
+                    class="material-icons-outlined">extension</span>Extensions<span class="menu-chevron">›</span></div>
+        </div>
+        <div class="menu-divider"></div>
+        <div class="menu-section">
+            <div class="menu-item zoom-row" data-action="zoom">
+                <span class="material-icons-outlined">search</span>Zoom
+                <div class="zoom-controls">
+                    <button class="zoom-btn" id="zoom-out">−</button>
+                    <span class="zoom-value" id="zoom-level">100%</span>
+                    <button class="zoom-btn" id="zoom-in">+</button>
+                    <button class="zoom-btn" id="zoom-fullscreen" title="Full screen"><span
+                            class="material-icons-outlined" style="font-size:14px">fullscreen</span></button>
+                </div>
+            </div>
+        </div>
+        <div class="menu-divider"></div>
+        <div class="menu-section">
+            <div class="menu-item" data-action="find"><span class="material-icons-outlined">find_in_page</span>Find in
+                Page<span class="menu-shortcut">⌘F</span></div>
+            <div class="menu-item" data-action="print"><span class="material-icons-outlined">print</span>Print...<span
+                    class="menu-shortcut">⌘P</span></div>
+        </div>
+        <div class="menu-divider"></div>
+        <div class="menu-section">
+            <div class="menu-item" data-action="settings"><span
+                    class="material-icons-outlined">settings</span>Settings<span class="menu-shortcut">⌘,</span></div>
+        </div>
+    </div>
+
+    <!-- ═══ Shields Panel (Brave-style per-site controls) ═══ -->
+    <div class="shields-panel" id="shields-panel" style="display:none;">
+        <div class="shields-header">
+            <div class="shields-header-top">
+                <div class="shields-icon-wrap">
+                    <span class="material-icons-outlined">security</span>
+                </div>
+                <div class="shields-header-text">
+                    <div class="shields-title">KryptonShield</div>
+                    <div class="shields-site" id="shields-site">—</div>
+                </div>
+                <div class="shields-master-toggle">
+                    <div class="settings-toggle active" id="shields-global-toggle"></div>
+                </div>
+            </div>
+            <div class="shields-stats-row">
+                <div class="shields-stat">
+                    <span class="shields-stat-num" id="shields-stat-trackers">0</span>
+                    <span class="shields-stat-label">Trackers & ads<br>blocked</span>
+                </div>
+                <div class="shields-stat-divider"></div>
+                <div class="shields-stat">
+                    <span class="shields-stat-num" id="shields-stat-https">0</span>
+                    <span class="shields-stat-label">Connections<br>upgraded</span>
+                </div>
+                <div class="shields-stat-divider"></div>
+                <div class="shields-stat">
+                    <span class="shields-stat-num" id="shields-stat-scripts">0</span>
+                    <span class="shields-stat-label">Scripts<br>blocked</span>
+                </div>
+                <div class="shields-stat-divider"></div>
+                <div class="shields-stat">
+                    <span class="shields-stat-num" id="shields-stat-fp">0</span>
+                    <span class="shields-stat-label">Fingerprint<br>attempts</span>
+                </div>
+            </div>
+        </div>
+        <div class="shields-controls">
+            <div class="shields-control-row">
+                <div class="shields-control-info">
+                    <span class="material-icons-outlined">block</span>
+                    <span>Block trackers & ads</span>
+                </div>
+                <select class="shields-select" id="shields-trackers-level">
+                    <option value="aggressive">Aggressive</option>
+                    <option value="standard" selected>Standard</option>
+                    <option value="disabled">Disabled</option>
+                </select>
+            </div>
+            <div class="shields-control-row">
+                <div class="shields-control-info">
+                    <span class="material-icons-outlined">lock</span>
+                    <span>Upgrade connections to HTTPS</span>
+                </div>
+                <div class="settings-toggle active" id="shields-https-toggle"></div>
+            </div>
+            <div class="shields-control-row">
+                <div class="shields-control-info">
+                    <span class="material-icons-outlined">code</span>
+                    <span>Block scripts</span>
+                </div>
+                <div class="settings-toggle" id="shields-scripts-toggle"></div>
+            </div>
+            <div class="shields-control-row">
+                <div class="shields-control-info">
+                    <span class="material-icons-outlined">fingerprint</span>
+                    <span>Block fingerprinting</span>
+                </div>
+                <select class="shields-select" id="shields-fp-level">
+                    <option value="strict">Strict</option>
+                    <option value="standard" selected>Standard</option>
+                    <option value="disabled">Disabled</option>
+                </select>
+            </div>
+            <div class="shields-control-row">
+                <div class="shields-control-info">
+                    <span class="material-icons-outlined">cookie</span>
+                    <span>Block cookies</span>
+                </div>
+                <select class="shields-select" id="shields-cookies-level">
+                    <option value="all">All cookies</option>
+                    <option value="3p" selected>Cross-site only</option>
+                    <option value="disabled">Disabled</option>
+                </select>
+            </div>
+        </div>
+        <div class="shields-footer">
+            <button class="shields-footer-btn" id="shields-advanced-btn">
+                <span class="material-icons-outlined">tune</span>
+                Advanced Controls
+            </button>
+            <button class="shields-footer-btn" id="shields-report-btn">
+                <span class="material-icons-outlined">flag</span>
+                Report a broken site
+            </button>
+        </div>
+    </div>
+
+    <!-- ═══ Sidebar (Brave-style) ═══ -->
+    <div class="sidebar" id="sidebar" style="display:none;">
+        <div class="sidebar-tabs">
+            <button class="sidebar-tab active" data-sidebar-tab="bookmarks" title="Bookmarks">
+                <span class="material-icons-outlined">bookmark</span>
+            </button>
+            <button class="sidebar-tab" data-sidebar-tab="history" title="History">
+                <span class="material-icons-outlined">history</span>
+            </button>
+            <button class="sidebar-tab" data-sidebar-tab="reading-list" title="Reading List">
+                <span class="material-icons-outlined">auto_stories</span>
+            </button>
+            <button class="sidebar-tab" data-sidebar-tab="ai" title="Leo AI">
+                <span class="material-icons-outlined">smart_toy</span>
+            </button>
+        </div>
+        <div class="sidebar-content">
+            <div class="sidebar-pane active" data-sidebar-pane="bookmarks">
+                <div class="sidebar-pane-header">
+                    <span>Bookmarks</span>
+                    <button class="sidebar-pane-action" id="sidebar-add-bookmark" title="Add bookmark">
+                        <span class="material-icons-outlined">add</span>
+                    </button>
+                </div>
+                <div class="sidebar-search">
+                    <span class="material-icons-outlined">search</span>
+                    <input type="text" id="sidebar-bookmark-search" placeholder="Search bookmarks…">
+                </div>
+                <div class="sidebar-list" id="sidebar-bookmarks-list"></div>
+            </div>
+            <div class="sidebar-pane" data-sidebar-pane="history">
+                <div class="sidebar-pane-header">
+                    <span>History</span>
+                    <button class="sidebar-pane-action" id="sidebar-clear-history" title="Clear history">
+                        <span class="material-icons-outlined">delete_outline</span>
+                    </button>
+                </div>
+                <div class="sidebar-search">
+                    <span class="material-icons-outlined">search</span>
+                    <input type="text" id="sidebar-history-search" placeholder="Search history…">
+                </div>
+                <div class="sidebar-list" id="sidebar-history-list"></div>
+            </div>
+            <div class="sidebar-pane" data-sidebar-pane="reading-list">
+                <div class="sidebar-pane-header">
+                    <span>Reading List</span>
+                    <button class="sidebar-pane-action" id="sidebar-add-reading" title="Add current page">
+                        <span class="material-icons-outlined">add</span>
+                    </button>
+                </div>
+                <div class="sidebar-list" id="sidebar-reading-list"></div>
+                <div class="sidebar-empty" id="sidebar-reading-empty">
+                    <span class="material-icons-outlined">auto_stories</span>
+                    <p>Save pages to read later</p>
+                </div>
+            </div>
+            <div class="sidebar-pane" data-sidebar-pane="ai">
+                <div class="sidebar-pane-header">
+                    <span>PQC Assistant</span>
+                </div>
+                <div class="sidebar-ai-content">
+                    <div class="sidebar-ai-icon">🛡️</div>
+                    <p class="sidebar-ai-desc">KryptonBrowser's quantum-secure assistant can help you understand PQC
+                        security, analyze page safety, and more.</p>
+                    <div class="sidebar-ai-actions">
+                        <button class="sidebar-ai-btn" id="ai-summarize"><span
+                                class="material-icons-outlined">summarize</span>Summarize page</button>
+                        <button class="sidebar-ai-btn" id="ai-security"><span
+                                class="material-icons-outlined">security</span>Security analysis</button>
+                        <button class="sidebar-ai-btn" id="ai-explain"><span
+                                class="material-icons-outlined">psychology</span>Explain PQC</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ Reader Mode Overlay ═══ -->
+    <div class="reader-overlay" id="reader-overlay" style="display:none;">
+        <div class="reader-toolbar">
+            <button class="reader-toolbar-btn" id="reader-close" title="Close Reader Mode">
+                <span class="material-icons-outlined">close</span>
+            </button>
+            <div class="reader-toolbar-title" id="reader-title">Reader Mode</div>
+            <div class="reader-toolbar-controls">
+                <button class="reader-toolbar-btn" id="reader-font-minus" title="Decrease font">A−</button>
+                <button class="reader-toolbar-btn" id="reader-font-plus" title="Increase font">A+</button>
+                <button class="reader-toolbar-btn" id="reader-theme-toggle" title="Toggle theme">
+                    <span class="material-icons-outlined">contrast</span>
+                </button>
+            </div>
+        </div>
+        <div class="reader-content" id="reader-content"></div>
+    </div>
+
+    <!-- ═══ Private Mode Indicator ═══ -->
+    <div class="private-mode-banner" id="private-mode-banner" style="display:none;">
+        <span class="material-icons-outlined">visibility_off</span>
+        <span>Private Browsing · No history saved · PQC encryption active</span>
+    </div>
+
+    <!-- ═══ Tab Context Menu ═══ -->
+    <div class="tab-ctx-menu" id="tab-ctx-menu" style="display:none;">
+        <div class="ctx-item" data-tab-action="pin"><span class="material-icons-outlined">push_pin</span><span
+                id="tab-ctx-pin-label">Pin Tab</span></div>
+        <div class="ctx-item" data-tab-action="duplicate"><span
+                class="material-icons-outlined">content_copy</span>Duplicate Tab</div>
+        <div class="ctx-item" data-tab-action="mute"><span class="material-icons-outlined">volume_off</span><span
+                id="tab-ctx-mute-label">Mute Tab</span></div>
+        <div class="ctx-separator"></div>
+        <div class="ctx-item" data-tab-action="reload"><span class="material-icons-outlined">refresh</span>Reload</div>
+        <div class="ctx-item" data-tab-action="close-others"><span class="material-icons-outlined">tab_close</span>Close
+            Other Tabs</div>
+        <div class="ctx-item" data-tab-action="close-right"><span class="material-icons-outlined">tab_close</span>Close
+            Tabs to Right</div>
+        <div class="ctx-separator"></div>
+        <div class="ctx-item danger" data-tab-action="close"><span class="material-icons-outlined">close</span>Close Tab
+        </div>
+    </div>
+
+    <!-- ═══ Extensions Panel ═══ -->
+    <div class="extensions-panel" id="extensions-panel" style="display:none;">
+        <div class="ext-header">
+            <span class="material-icons-outlined">extension</span>
+            Extensions
+        </div>
+        <div class="ext-list" id="ext-list">
+            <!-- Populated by JS -->
+        </div>
+        <div class="ext-footer">
+            <button class="ext-manage-btn" id="btn-manage-extensions">Manage Extensions</button>
+        </div>
+    </div>
+
+    <!-- ═══ Downloads Panel ═══ -->
+    <div class="downloads-panel" id="downloads-panel" style="display:none;">
+        <div class="dl-panel-header">
+            <span class="material-icons-outlined">download</span>
+            Downloads
+            <button class="dl-panel-close" id="dl-panel-close" title="Close">
+                <span class="material-icons-outlined">close</span>
+            </button>
+        </div>
+        <div class="dl-list" id="dl-list">
+            <div class="dl-empty">
+                <span class="material-icons-outlined">download_done</span>
+                <p>No downloads yet</p>
+            </div>
+        </div>
+        <div class="dl-panel-footer">
+            <button class="dl-open-folder-btn" id="dl-open-downloads-folder">
+                <span class="material-icons-outlined">folder_open</span>Open Downloads Folder
+            </button>
+        </div>
+    </div>
+
+    <!-- ═══ Status Bar ═══ -->
+    <div id="status-bar" class="status-bar">
+        <div class="status-bar-left">
+            <span id="status-hover-url" class="status-url"></span>
+        </div>
+        <div class="status-bar-right">
+            <span id="status-pqc" class="status-pqc" title="PQC Protection Active">
+                <span class="material-icons-outlined" style="font-size:12px">shield</span>
+                PQC Active
+            </span>
+            <span id="status-blocked" class="status-blocked" title="Trackers Blocked"></span>
+        </div>
+    </div>
+
+    <script type="module" src="./browser-chrome.js"></script>
+</body>
+
+</html>

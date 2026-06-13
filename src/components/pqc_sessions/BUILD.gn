@@ -1,0 +1,25 @@
+# Copyright 2025 The ArjunBrowser Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# PQC Session Database Component
+# Implements the five-entity ER schema from DA3.
+
+source_set("pqc_sessions") {
+  sources = [
+    "db/schema_version.h",
+    "pqc_session_db.cc",
+    "pqc_session_db.h",
+    "pqc_session_service.cc",
+    "pqc_session_service.h",
+  ]
+
+  public_deps = [
+    "//base",
+    "//sql",
+  ]
+
+  data = [
+    "db/schema.sql",
+  ]
+}

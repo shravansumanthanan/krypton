@@ -1,0 +1,99 @@
+# Copyright 2025 The ArjunBrowser Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/config/pqc_features.gni")
+
+# Post-Quantum Cryptography (PQC) module for ArjunBrowser.
+# Contains the Quantum Security Module, Key Manager, Handshake
+# State Machine, and associated test targets.
+
+source_set("pqc") {
+  sources = [
+    "pqc_handshake_state_machine.cc",
+    "pqc_handshake_state_machine.h",
+    "pqc_key_manager.cc",
+    "pqc_key_manager.h",
+    "pqc_session_record.cc",
+    "pqc_session_record.h",
+    "quantum_security_module.cc",
+    "quantum_security_module.h",
+  ]
+
+  public_deps = [
+    "//base",
+    "//net/ssl:pqc_hybrid_kdf",
+    "//net/cert:pqc_cert",
+    "//third_party/liboqs",
+    "//third_party/boringssl",
+  ]
+
+  defines = []
+  if (pqc_enabled) {
+    defines += [ "PQC_ENABLED" ]
+  }
+  if (indigenous_pki_strict) {
+    defines += [ "INDIGENOUS_PKI_STRICT" ]
+  }
+  if (hybrid_mode) {
+    defines += [ "PQC_HYBRID_MODE" ]
+  }
+}
+
+source_set("pqc_hybrid_kdf") {
+  sources = [
+    "//net/ssl/pqc_hybrid_kdf.cc",
+    "//net/ssl/pqc_hybrid_kdf.h",
+  ]
+
+  public_deps = [
+    "//third_party/boringssl",
+  ]
+}
+
+source_set("pqc_cert") {
+  sources = [
+    "//net/cert/pqc_certificate_validator.h",
+    "//net/cert/pqc_indigenous_trust_store.cc",
+    "//net/cert/pqc_indigenous_trust_store.h",
+  ]
+
+  public_deps = [
+    "//base",
+    "//third_party/liboqs",
+  ]
+}
+
+# ── Test Targets ──
+
+source_set("pqc_unittests") {
+  testonly = true
+
+  sources = [
+    "test/pqc_handshake_test.cc",
+    "test/pqc_kat_test.cc",
+  ]
+
+  deps = [
+    ":pqc",
+    ":pqc_cert",
+    ":pqc_hybrid_kdf",
+    "//base/test:test_support",
+    "//testing/gtest",
+    "//third_party/liboqs",
+  ]
+}
+
+source_set("pqc_benchmarks") {
+  testonly = true
+
+  sources = [
+    "test/pqc_benchmark.cc",
+  ]
+
+  deps = [
+    ":pqc",
+    "//third_party/liboqs",
+    "//third_party/google_benchmark",
+  ]
+}

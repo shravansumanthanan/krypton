@@ -1,0 +1,47 @@
+{
+  "name": "kryptonbrowser",
+  "version": "1.0.0",
+  "description": "KryptonBrowser — A Post-Quantum Cryptography enabled secure browser",
+  "main": "main.js",
+  "scripts": {
+    "start": "npm run build:ui && electron .",
+    "build:ui": "vite build",
+    "build": "npm run build:ui && electron-builder build --mac",
+    "build:dir": "npm run build:ui && electron-builder build --mac --dir",
+    "test:unit": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "test:e2e": "playwright test"
+  },
+  "author": "KryptonBrowser Team",
+  "license": "BSD-3-Clause",
+  "devDependencies": {
+    "@playwright/test": "^1.60.0",
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8",
+    "jest": "^30.4.2",
+    "vite": "^8.0.16"
+  },
+  "build": {
+    "appId": "com.krypton.browser",
+    "productName": "KryptonBrowser",
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": "dir"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "preload-webview.js",
+      "pqc-engine.js",
+      "blocklist.json",
+      "build/**/*"
+    ],
+    "directories": {
+      "output": "dist"
+    }
+  },
+  "dependencies": {
+    "@noble/post-quantum": "^0.5.4",
+    "dompurify": "^3.4.10",
+    "electron-updater": "^6.8.9"
+  }
+}
