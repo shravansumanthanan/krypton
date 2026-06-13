@@ -2,14 +2,14 @@ import { defineConfig } from 'vite';
 import { resolve } from 'path';
 
 export default defineConfig({
-  root: 'src',
+  root: 'src/renderer',
   base: './',
   build: {
-    outDir: '../build',
+    outDir: '../../build',
     emptyOutDir: true,
     rollupOptions: {
       input: {
-        main: resolve(__dirname, 'src/index.html')
+        main: resolve(__dirname, 'src/renderer/index.html')
       }
     }
   }

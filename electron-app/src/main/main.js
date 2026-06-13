@@ -36,7 +36,7 @@ const CATEGORY_SETS = {};  // { ads: Set, trackers: Set, fingerprinting: Set, ..
 
 function loadBlocklist() {
     try {
-        const raw = fs.readFileSync(path.join(__dirname, 'blocklist.json'), 'utf-8');
+        const raw = fs.readFileSync(path.join(__dirname, '../../blocklist.json'), 'utf-8');
         const data = JSON.parse(raw);
 
         // Flatten all category arrays into one Set for O(1) hostname lookup
@@ -146,7 +146,7 @@ function createWindow() {
         show: false,
     });
 
-    mainWindow.loadFile('build/index.html');
+    mainWindow.loadFile(path.join(__dirname, '../../build/index.html'));
     mainWindow.once('ready-to-show', () => mainWindow.show());
 
     mainWindow.webContents.on('console-message', (event, level, message) => {

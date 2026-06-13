@@ -5,7 +5,7 @@ const path = require('path');
 test('Launch KryptonBrowser and check UI', async () => {
   // Launch Electron app.
   const electronApp = await electron.launch({
-    args: [path.join(__dirname, '..', 'main.js')]
+    args: [path.join(__dirname, '../../src/main', 'main.js')]
   });
 
   // Evaluate an expression in the main process to ensure it's loaded
@@ -18,14 +18,17 @@ test('Launch KryptonBrowser and check UI', async () => {
   const window = await electronApp.firstWindow();
   
   // Take a screenshot of the initial state
-  await window.screenshot({ path: 'tests/screenshot-startup.png' });
+  await window.screenshot({ path: 'tests/e2e/screenshot-startup.png' });
+
+  // Verify that the UI elements are present first to ensure page is loaded
+  const urlBar = await window.locator('#url-bar');
+  await expect(urlBar).toBeVisible();
 
   // Verify the title
   const title = await window.title();
   expect(title).toContain('KryptonBrowser');
 
-  // Verify that the UI elements are present
-  const urlBar = await window.locator('#url-bar');
+
   await expect(urlBar).toBeVisible();
 
   // Close app
