@@ -1,0 +1,152 @@
+// Copyright 2025 The ArjunBrowser Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// PQC Security Mojo Interface — Cross-process IPC for PQC operations.
+//
+// Defines the Mojo service interface for post-quantum cryptographic
+// operations between the browser and network processes.
+//
+// Security constraint: The renderer process NEVER receives raw key
+// material. All cryptographic operations run in the network process;
+// the renderer receives only session_id tokens.
+
+module network.mojom;
+
+// Status codes for PKI verification
+enum PKIVerificationResult {
+  VERIFIED_INDIGENOUS,
+  VERIFIED_EXTERNAL,
+  FAILED_INVALID_SIG,
+  FAILED_UNKNOWN_CA,
+  FAILED_REVOKED,
+  FAILED_EXPIRED,
+  PENDING,
+};
+
+// Handshake state values
+enum HandshakeState {
+  BROWSER_IDLE,
+  RESOLVING_DNS,
+  KEY_GENERATION,
+  WAITING_FOR_SERVER,
+  VERIFYING_IDENTITY,
+  DERIVING_SECRETS,
+  ALERT_SENT,
+  SECURE_TUNNEL,
+  CONNECTION_TERMINATED,
+};
+
+// Result of a PQC handshake
+struct PQCHandshakeResult {
+  bool success;
+  string session_id;
+  string kem_algorithm;
+  string sig_algorithm;
+  string cipher_suite;
+  bool indigenous_verified;
+  string issuing_ca;
+  uint32 handshake_ms;
+  PKIVerificationResult pki_result;
+  string tls_version;
+  string domain;
+  string ip_address;
+  uint16 port;
+};
+
+// Current PQC session status
+struct PQCSessionStatus {
+  string session_id;
+  HandshakeState current_state;
+  string domain;
+  string kem_algorithm;
+  string sig_algorithm;
+  string cipher_suite;
+  bool indigenous_verified;
+  string issuing_ca;
+  uint32 handshake_ms;
+  string tls_version;
+  PKIVerificationResult pki_result;
+  bool hybrid_mode;
+  string ocsp_status;
+};
+
+// Certificate verification result
+struct CertificateVerificationResult {
+  PKIVerificationResult result;
+  string ca_name;
+  bool is_indigenous;
+  bool is_pqc;
+  string signature_algorithm;
+  string ocsp_status;
+  string subject_cn;
+  string issuer_cn;
+};
+
+// Trust store entry for UI display
+struct TrustStoreEntry {
+  int64 root_id;
+  string ca_name;
+  string organization;
+  string algorithm;
+  string country;
+  bool is_indigenous;
+  bool trusted;
+  bool pqc_capable;
+  string ocsp_url;
+};
+
+// State transition entry for handshake log
+struct StateTransitionEntry {
+  HandshakeState from_state;
+  HandshakeState to_state;
+  string event;
+  double timestamp;
+  uint32 duration_ms;
+  string description;
+};
+
+// ═══════════════════════════════════════════════════════════════
+// PQCSecurityService — Main Mojo interface
+// ═══════════════════════════════════════════════════════════════
+
+interface PQCSecurityService {
+  // Initiate a PQC handshake for a given domain and URL.
+  // Called by the browser process when navigating to a new page.
+  InitiateHandshake(string domain, string url)
+      => (PQCHandshakeResult result);
+
+  // Get the current PQC status for an active session.
+  GetSessionStatus(string session_id)
+      => (PQCSessionStatus status);
+
+  // Verify a certificate against the Indigenous PKI trust store.
+  VerifyCertificate(array<uint8> cert_der, string domain)
+      => (CertificateVerificationResult result);
+
+  // Get the full handshake state transition log for a session.
+  GetHandshakeLog(string session_id)
+      => (array<StateTransitionEntry> log);
+
+  // Get all trust store entries (for the Trust Store Manager UI).
+  GetTrustStoreEntries()
+      => (array<TrustStoreEntry> entries);
+
+  // Modify trust for a CA.
+  SetCATrustStatus(string ca_name, bool trusted) => (bool success);
+
+  // Import a certificate into the trust store.
+  ImportCertificate(array<uint8> cert_pem, bool as_indigenous)
+      => (bool success, string ca_name);
+
+  // Remove a non-indigenous CA from the trust store.
+  RemoveCertificate(string ca_name) => (bool success);
+
+  // Export handshake session data as CSV.
+  ExportSessionData(int32 limit) => (string csv_data);
+
+  // Check if PQC is available and properly initialized.
+  CheckPQCAvailability()
+      => (bool available, string liboqs_version, string kem_algorithm,
+          string sig_algorithm);
+};

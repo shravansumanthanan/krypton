@@ -1,0 +1,127 @@
+# Copyright 2025 The ArjunBrowser Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Build configuration for liboqs (Open Quantum Safe library).
+# liboqs provides stable ML-KEM-768 and ML-DSA-65 implementations
+# matching NIST FIPS 203/204 specifications.
+# Minimum version: liboqs >= 0.10.0
+
+import("//build/config/pqc_features.gni")
+
+static_library("liboqs") {
+  sources = [
+    # Core common
+    "src/src/common/common.c",
+    "src/src/common/pqclean_shims/fips202.c",
+    "src/src/common/pqclean_shims/fips202x4.c",
+    "src/src/common/sha2.c",
+    "src/src/common/sha3.c",
+    "src/src/common/rand/rand.c",
+    "src/src/common/rand/rand_nist.c",
+
+    # ML-KEM-768 (FIPS 203, formerly Kyber-768)
+    "src/src/kem/ml_kem/ml_kem_768/clean/indcpa.c",
+    "src/src/kem/ml_kem/ml_kem_768/clean/kem.c",
+    "src/src/kem/ml_kem/ml_kem_768/clean/ntt.c",
+    "src/src/kem/ml_kem/ml_kem_768/clean/poly.c",
+    "src/src/kem/ml_kem/ml_kem_768/clean/polyvec.c",
+    "src/src/kem/ml_kem/ml_kem_768/clean/reduce.c",
+    "src/src/kem/ml_kem/ml_kem_768/clean/symmetric-shake.c",
+    "src/src/kem/ml_kem/ml_kem_768/clean/verify.c",
+
+    # ML-KEM-512 (for alternative selection)
+    "src/src/kem/ml_kem/ml_kem_512/clean/indcpa.c",
+    "src/src/kem/ml_kem/ml_kem_512/clean/kem.c",
+    "src/src/kem/ml_kem/ml_kem_512/clean/ntt.c",
+    "src/src/kem/ml_kem/ml_kem_512/clean/poly.c",
+    "src/src/kem/ml_kem/ml_kem_512/clean/polyvec.c",
+    "src/src/kem/ml_kem/ml_kem_512/clean/reduce.c",
+    "src/src/kem/ml_kem/ml_kem_512/clean/symmetric-shake.c",
+    "src/src/kem/ml_kem/ml_kem_512/clean/verify.c",
+
+    # ML-KEM-1024 (for alternative selection)
+    "src/src/kem/ml_kem/ml_kem_1024/clean/indcpa.c",
+    "src/src/kem/ml_kem/ml_kem_1024/clean/kem.c",
+    "src/src/kem/ml_kem/ml_kem_1024/clean/ntt.c",
+    "src/src/kem/ml_kem/ml_kem_1024/clean/poly.c",
+    "src/src/kem/ml_kem/ml_kem_1024/clean/polyvec.c",
+    "src/src/kem/ml_kem/ml_kem_1024/clean/reduce.c",
+    "src/src/kem/ml_kem/ml_kem_1024/clean/symmetric-shake.c",
+    "src/src/kem/ml_kem/ml_kem_1024/clean/verify.c",
+
+    # ML-DSA-65 (FIPS 204, formerly Dilithium-3)
+    "src/src/sig/ml_dsa/ml_dsa_65/clean/ntt.c",
+    "src/src/sig/ml_dsa/ml_dsa_65/clean/packing.c",
+    "src/src/sig/ml_dsa/ml_dsa_65/clean/poly.c",
+    "src/src/sig/ml_dsa/ml_dsa_65/clean/polyvec.c",
+    "src/src/sig/ml_dsa/ml_dsa_65/clean/reduce.c",
+    "src/src/sig/ml_dsa/ml_dsa_65/clean/rounding.c",
+    "src/src/sig/ml_dsa/ml_dsa_65/clean/sign.c",
+    "src/src/sig/ml_dsa/ml_dsa_65/clean/symmetric-shake.c",
+
+    # ML-DSA-44 (for alternative selection)
+    "src/src/sig/ml_dsa/ml_dsa_44/clean/ntt.c",
+    "src/src/sig/ml_dsa/ml_dsa_44/clean/packing.c",
+    "src/src/sig/ml_dsa/ml_dsa_44/clean/poly.c",
+    "src/src/sig/ml_dsa/ml_dsa_44/clean/polyvec.c",
+    "src/src/sig/ml_dsa/ml_dsa_44/clean/reduce.c",
+    "src/src/sig/ml_dsa/ml_dsa_44/clean/rounding.c",
+    "src/src/sig/ml_dsa/ml_dsa_44/clean/sign.c",
+    "src/src/sig/ml_dsa/ml_dsa_44/clean/symmetric-shake.c",
+
+    # ML-DSA-87 (for alternative selection)
+    "src/src/sig/ml_dsa/ml_dsa_87/clean/ntt.c",
+    "src/src/sig/ml_dsa/ml_dsa_87/clean/packing.c",
+    "src/src/sig/ml_dsa/ml_dsa_87/clean/poly.c",
+    "src/src/sig/ml_dsa/ml_dsa_87/clean/polyvec.c",
+    "src/src/sig/ml_dsa/ml_dsa_87/clean/reduce.c",
+    "src/src/sig/ml_dsa/ml_dsa_87/clean/rounding.c",
+    "src/src/sig/ml_dsa/ml_dsa_87/clean/sign.c",
+    "src/src/sig/ml_dsa/ml_dsa_87/clean/symmetric-shake.c",
+
+    # OQS wrapper API
+    "src/src/oqs.c",
+    "src/src/kem/kem.c",
+    "src/src/sig/sig.c",
+  ]
+
+  include_dirs = [
+    "src/src",
+    "src/src/common",
+    "src/src/common/pqclean_shims",
+  ]
+
+  public_configs = [ ":liboqs_config" ]
+
+  # Disable Chromium-specific warnings for third-party code
+  configs -= [ "//build/config/compiler:chromium_code" ]
+  configs += [ "//build/config/compiler:no_chromium_code" ]
+
+  cflags = [
+    "-Wno-unused-parameter",
+    "-Wno-sign-compare",
+    "-Wno-cast-qual",
+    "-Wno-implicit-fallthrough",
+    "-DOQS_ENABLE_KEM_ml_kem_768",
+    "-DOQS_ENABLE_KEM_ml_kem_512",
+    "-DOQS_ENABLE_KEM_ml_kem_1024",
+    "-DOQS_ENABLE_SIG_ml_dsa_65",
+    "-DOQS_ENABLE_SIG_ml_dsa_44",
+    "-DOQS_ENABLE_SIG_ml_dsa_87",
+    "-DOQS_DIST_BUILD",
+  ]
+}
+
+config("liboqs_config") {
+  include_dirs = [ "src/src" ]
+
+  defines = [
+    "OQS_ENABLE_KEM_ml_kem_768",
+    "OQS_ENABLE_KEM_ml_kem_512",
+    "OQS_ENABLE_KEM_ml_kem_1024",
+    "OQS_ENABLE_SIG_ml_dsa_65",
+    "OQS_ENABLE_SIG_ml_dsa_44",
+    "OQS_ENABLE_SIG_ml_dsa_87",
+  ]
+}

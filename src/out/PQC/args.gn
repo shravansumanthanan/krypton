@@ -1,0 +1,31 @@
+# ArjunBrowser PQC Build Configuration
+# Generated for Post-Quantum Cryptography enabled builds.
+
+import("//build/config/pqc_features.gni")
+
+# Release build settings
+is_debug = false
+is_component_build = false
+symbol_level = 0
+enable_nacl = false
+proprietary_codecs = false
+
+# PQC-specific flags
+pqc_enabled = true
+indigenous_pki_strict = true
+pqc_kem_algorithm = "ML-KEM-768"
+pqc_sig_algorithm = "ML-DSA-65"
+hybrid_mode = true
+fail_closed_policy = true
+pqc_doh_enabled = true
+pqc_ocsp_enabled = true
+pqc_session_logging = true
+pqc_key_pool_size = 5
+
+# Target CPU and OS
+target_cpu = "x64"
+target_os = "linux"
+
+# Chrome branding
+is_official_build = false
+chrome_pgo_phase = 0

@@ -1,0 +1,25 @@
+Name: liboqs (Open Quantum Safe)
+Short Name: liboqs
+URL: https://github.com/open-quantum-safe/liboqs
+Version: 0.10.0
+License: MIT
+License File: src/LICENSE.txt
+Security Critical: yes
+Shipped: yes
+
+Description:
+liboqs is an open-source C library for quantum-safe cryptographic algorithms.
+It provides implementations of post-quantum key encapsulation mechanisms (KEMs)
+and digital signature algorithms as standardized by NIST:
+  - ML-KEM (FIPS 203, formerly CRYSTALS-Kyber) — key encapsulation
+  - ML-DSA (FIPS 204, formerly CRYSTALS-Dilithium) — digital signatures
+
+ArjunBrowser uses liboqs for:
+  - ML-KEM-768 hybrid key exchange (X25519 + ML-KEM-768) in TLS 1.3
+  - ML-DSA-65 server certificate signature verification
+  - NIST Known-Answer Test (KAT) validation
+
+Local Modifications:
+  - BUILD.gn created for Chromium GN build system integration
+  - Source files compiled with Chromium-compatible warning suppressions
+  - Configured to enable only ML-KEM-{512,768,1024} and ML-DSA-{44,65,87}

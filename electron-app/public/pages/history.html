@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>History — KryptonBrowser</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #1e2028;
+            --bg-card: #23262f;
+            --border: #32363f;
+            --text: #e8eaed;
+            --text2: #9aa0a6;
+            --text3: #6b7280;
+            --accent: #fb923c;
+            --red: #f87171;
+            --font: 'Inter', -apple-system, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--font);
+            padding: 40px;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 32px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header h1 .material-icons-outlined {
+            font-size: 32px;
+            color: var(--accent);
+        }
+
+        .search-box {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            width: 320px;
+        }
+
+        .search-box .material-icons-outlined {
+            font-size: 18px;
+            color: var(--text3);
+        }
+
+        .search-box input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            color: var(--text);
+            font-family: var(--font);
+            font-size: 13px;
+            outline: none;
+        }
+
+        .search-box input::placeholder {
+            color: var(--text3);
+        }
+
+        .actions-bar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .action-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: transparent;
+            color: var(--text2);
+            font-family: var(--font);
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .action-btn:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text);
+        }
+
+        .action-btn.danger:hover {
+            border-color: var(--red);
+            color: var(--red);
+        }
+
+        .action-btn .material-icons-outlined {
+            font-size: 16px;
+        }
+
+        .day-group {
+            margin-bottom: 28px;
+        }
+
+        .day-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text2);
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 8px;
+        }
+
+        .history-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.12s;
+        }
+
+        .history-item:hover {
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .history-time {
+            font-size: 12px;
+            color: var(--text3);
+            min-width: 50px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .history-favicon {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .history-favicon img {
+            width: 16px;
+            height: 16px;
+            border-radius: 2px;
+        }
+
+        .history-favicon .material-icons-outlined {
+            font-size: 16px;
+            color: var(--text3);
+        }
+
+        .history-title {
+            flex: 1;
+            font-size: 13px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .history-url {
+            font-size: 12px;
+            color: var(--text3);
+            max-width: 300px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .history-delete {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            border: none;
+            border-radius: 50%;
+            background: transparent;
+            color: var(--text3);
+            cursor: pointer;
+            opacity: 0;
+            transition: all 0.12s;
+        }
+
+        .history-item:hover .history-delete {
+            opacity: 1;
+        }
+
+        .history-delete:hover {
+            background: rgba(248, 113, 113, 0.15);
+            color: var(--red);
+        }
+
+        .history-delete .material-icons-outlined {
+            font-size: 16px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 80px 0;
+            color: var(--text3);
+        }
+
+        .empty-state .material-icons-outlined {
+            font-size: 64px;
+            margin-bottom: 16px;
+            opacity: 0.3;
+        }
+
+        .empty-state p {
+            font-size: 15px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1><span class="material-icons-outlined">history</span> History</h1>
+        <div class="search-box">
+            <span class="material-icons-outlined">search</span>
+            <input type="text" id="search-input" placeholder="Search history...">
+        </div>
+    </div>
+    <div class="actions-bar">
+        <button class="action-btn danger" id="btn-clear-all">
+            <span class="material-icons-outlined">delete_sweep</span> Clear all browsing data
+        </button>
+    </div>
+    <div id="history-container"></div>
+
+    <script>
+        // History data will be injected by the parent browser chrome via window.__krypton_history
+        // because webviews have separate localStorage from the parent window.
+        const $container = document.getElementById('history-container');
+        const $search = document.getElementById('search-input');
+
+        let history = [];
+
+        // Wait for data injection from parent
+        function init() {
+            if (window.__krypton_history) {
+                history = window.__krypton_history;
+            }
+            renderHistory();
+        }
+
+        function renderHistory(filter) {
+            filter = filter || '';
+            $container.innerHTML = '';
+            const filtered = filter
+                ? history.filter(h => (h.title || '').toLowerCase().includes(filter) || (h.url || '').toLowerCase().includes(filter))
+                : history;
+
+            if (filtered.length === 0) {
+                $container.innerHTML = `
+          <div class="empty-state">
+            <span class="material-icons-outlined">history</span>
+            <p>${filter ? 'No matching history found' : 'No browsing history yet. Start browsing to see your history here.'}</p>
+          </div>`;
+                return;
+            }
+
+            // Group by day
+            const groups = {};
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+
+            filtered.forEach(h => {
+                const d = new Date(h.timestamp);
+                const dayStart = new Date(d);
+                dayStart.setHours(0, 0, 0, 0);
+
+                let key;
+                if (dayStart.getTime() === today.getTime()) key = 'Today';
+                else if (dayStart.getTime() === yesterday.getTime()) key = 'Yesterday';
+                else key = d.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+                if (!groups[key]) groups[key] = [];
+                groups[key].push(h);
+            });
+
+            Object.entries(groups).forEach(([day, items]) => {
+                const group = document.createElement('div');
+                group.className = 'day-group';
+                group.innerHTML = '<div class="day-label">' + day + '</div>';
+
+                items.forEach(item => {
+                    const row = document.createElement('div');
+                    row.className = 'history-item';
+                    const time = new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    const faviconHtml = item.favicon
+                        ? '<img src="' + item.favicon + '" onerror="this.outerHTML=\'<span class=\\\'material-icons-outlined\\\'>language</span>\'">'
+                        : '<span class="material-icons-outlined">language</span>';
+
+                    row.innerHTML =
+                        '<span class="history-time">' + time + '</span>' +
+                        '<div class="history-favicon">' + faviconHtml + '</div>' +
+                        '<span class="history-title">' + (item.title || item.url) + '</span>' +
+                        '<span class="history-url">' + item.url + '</span>' +
+                        '<button class="history-delete" title="Remove"><span class="material-icons-outlined">close</span></button>';
+
+                    row.addEventListener('click', function (e) {
+                        if (e.target.closest('.history-delete')) return;
+                        // Navigate — parent will pick this up
+                        window.location.href = item.url;
+                    });
+
+                    row.querySelector('.history-delete').addEventListener('click', function () {
+                        history = history.filter(function (h) { return h.timestamp !== item.timestamp; });
+                        // Notify parent to update localStorage
+                        window.__krypton_deleteHistory(item.timestamp);
+                        renderHistory($search.value.toLowerCase());
+                    });
+
+                    group.appendChild(row);
+                });
+
+                $container.appendChild(group);
+            });
+        }
+
+        $search.addEventListener('input', function () { renderHistory($search.value.toLowerCase()); });
+
+        document.getElementById('btn-clear-all').addEventListener('click', function () {
+            if (confirm('Clear all browsing history?')) {
+                history = [];
+                if (window.__krypton_clearHistory) window.__krypton_clearHistory();
+                renderHistory();
+            }
+        });
+
+        // Initialize — data may be injected after a short delay
+        setTimeout(init, 100);
+        // Also listen for re-init
+        window.__krypton_initHistory = function (data) {
+            history = data;
+            renderHistory();
+        };
+    </script>
+</body>
+
+</html>

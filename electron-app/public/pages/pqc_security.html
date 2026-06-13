@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<!-- Copyright 2025 The KryptonBrowser Authors. All rights reserved.
+     Use of this source code is governed by a BSD-style license that can be
+     found in the LICENSE file. -->
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PQC Security — KryptonBrowser</title>
+  <link rel="stylesheet" href="pqc_security.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Google+Sans:wght@400;500&display=swap"
+    rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+</head>
+
+<body>
+  <!-- ══════ TOP BAR ══════ -->
+  <header class="top-bar">
+    <div class="top-bar-left">
+      <button class="icon-btn back-btn" id="btn-back" title="Back">
+        <span class="material-icons-outlined">arrow_back</span>
+      </button>
+      <h1 class="page-title">PQC Security</h1>
+    </div>
+    <div class="top-bar-right">
+      <div class="search-box">
+        <span class="material-icons-outlined search-icon">search</span>
+        <input type="text" id="search-input" placeholder="Search security settings">
+      </div>
+      <div class="global-status-pill" id="global-status-pill">
+        <span class="status-dot" id="global-dot"></span>
+        <span id="global-status-text">Active</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <!-- ══════ LEFT SIDEBAR ══════ -->
+    <nav class="sidebar" id="sidebar">
+      <a class="sidebar-item active" data-section="overview">
+        <span class="material-icons-outlined">shield</span>
+        <span class="sidebar-label">Overview</span>
+      </a>
+      <a class="sidebar-item" data-section="connection">
+        <span class="material-icons-outlined">lock</span>
+        <span class="sidebar-label">Connection</span>
+      </a>
+      <a class="sidebar-item" data-section="algorithms">
+        <span class="material-icons-outlined">key</span>
+        <span class="sidebar-label">Algorithms</span>
+      </a>
+      <a class="sidebar-item" data-section="truststore">
+        <span class="material-icons-outlined">verified_user</span>
+        <span class="sidebar-label">Trust Store</span>
+      </a>
+      <a class="sidebar-item" data-section="handshake">
+        <span class="material-icons-outlined">swap_horiz</span>
+        <span class="sidebar-label">Handshake Log</span>
+      </a>
+      <a class="sidebar-item" data-section="sessions">
+        <span class="material-icons-outlined">history</span>
+        <span class="sidebar-label">Session History</span>
+      </a>
+      <div class="sidebar-divider"></div>
+      <a class="sidebar-item" data-section="diagnostics">
+        <span class="material-icons-outlined">build</span>
+        <span class="sidebar-label">Diagnostics</span>
+      </a>
+    </nav>
+
+    <!-- ══════ MAIN CONTENT ══════ -->
+    <main class="main-content" id="main-content">
+
+      <!-- —— OVERVIEW SECTION —— -->
+      <section id="section-overview" class="section active">
+        <h2 class="section-heading">Quantum Security Overview</h2>
+        <p class="section-description">
+          KryptonBrowser uses post-quantum cryptography to protect your
+          connections against both classical and quantum computing threats.
+        </p>
+
+        <!-- Shield Banner -->
+        <div class="shield-banner" id="shield-banner">
+          <div class="shield-icon-large">
+            <span class="material-icons-outlined">verified_user</span>
+          </div>
+          <div class="shield-info">
+            <h3 id="shield-title">Quantum-Secure Protection is ON</h3>
+            <p id="shield-subtitle">
+              Your connections use hybrid X25519 + ML-KEM-768 key exchange
+              with ML-DSA-65 signature verification.
+            </p>
+          </div>
+        </div>
+
+        <!-- Quick Settings Rows -->
+        <div class="settings-card">
+          <div class="settings-row">
+            <span class="material-icons-outlined row-icon">security</span>
+            <div class="row-text">
+              <div class="row-title">Hybrid PQC Mode</div>
+              <div class="row-desc">Use X25519 + ML-KEM-768 for key exchange (recommended)</div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="toggle-hybrid" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="settings-row">
+            <span class="material-icons-outlined row-icon">gpp_good</span>
+            <div class="row-text">
+              <div class="row-title">Indigenous PKI Enforcement</div>
+              <div class="row-desc">Only trust certificates from Indian Root CAs (Fail-Closed)</div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="toggle-indigenous" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="settings-row">
+            <span class="material-icons-outlined row-icon">block</span>
+            <div class="row-text">
+              <div class="row-title">Fail-Closed Policy</div>
+              <div class="row-desc">Reject connections that fail PQC or Indigenous PKI verification</div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="toggle-failclosed" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="settings-row clickable" data-navigate="algorithms">
+            <span class="material-icons-outlined row-icon">tune</span>
+            <div class="row-text">
+              <div class="row-title">Algorithm Configuration</div>
+              <div class="row-desc">ML-KEM-768 (KEM) · ML-DSA-65 (Signatures)</div>
+            </div>
+            <span class="material-icons-outlined row-chevron">chevron_right</span>
+          </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <h3 class="subsection-heading">Session Statistics</h3>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <span class="material-icons-outlined stat-icon stat-icon-blue">https</span>
+            <div class="stat-info">
+              <div class="stat-value" id="stat-total">0</div>
+              <div class="stat-label">Total Handshakes</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <span class="material-icons-outlined stat-icon stat-icon-green">verified</span>
+            <div class="stat-info">
+              <div class="stat-value" id="stat-pqc">0</div>
+              <div class="stat-label">PQC Verified</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <span class="material-icons-outlined stat-icon stat-icon-teal">flag</span>
+            <div class="stat-info">
+              <div class="stat-value" id="stat-indigenous">0</div>
+              <div class="stat-label">Indigenous PKI</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <span class="material-icons-outlined stat-icon stat-icon-red">report</span>
+            <div class="stat-info">
+              <div class="stat-value" id="stat-failed">0</div>
+              <div class="stat-label">Rejected</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- —— CONNECTION SECTION —— -->
+      <section id="section-connection" class="section">
+        <h2 class="section-heading">Current Connection</h2>
+        <p class="section-description">
+          Details about the active TLS connection and its PQC parameters.
+        </p>
+
+        <div class="connection-banner" id="conn-banner">
+          <div class="conn-lock">
+            <span class="material-icons-outlined">lock</span>
+          </div>
+          <div class="conn-banner-info">
+            <div class="conn-domain" id="conn-domain">army.mil.in</div>
+            <div class="conn-status" id="conn-status-text">
+              Connection is quantum-secure · Indigenous PKI verified
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-card">
+          <div class="detail-row">
+            <span class="detail-label">State</span>
+            <span class="detail-value badge badge-green" id="conn-state">SECURE_TUNNEL</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Key Exchange</span>
+            <span class="detail-value" id="conn-kem">X25519 + ML-KEM-768</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Signature Algorithm</span>
+            <span class="detail-value" id="conn-sig">ML-DSA-65</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Cipher Suite</span>
+            <span class="detail-value mono" id="conn-cipher">TLS_KYBER768_X25519_AES256GCM_SHA384</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">TLS Version</span>
+            <span class="detail-value" id="conn-tls">TLS 1.3</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Issuing CA</span>
+            <span class="detail-value" id="conn-ca">Indian Army PKI Root</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Indigenous PKI</span>
+            <span class="detail-value badge badge-green" id="conn-pki">✓ Verified</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Handshake Time</span>
+            <span class="detail-value" id="conn-time">42 ms</span>
+          </div>
+        </div>
+
+        <!-- State Machine -->
+        <h3 class="subsection-heading">Handshake State Machine</h3>
+        <div class="settings-card state-machine-card">
+          <div class="state-machine" id="state-machine">
+            <div class="sm-node completed" data-state="idle">BROWSER_IDLE</div>
+            <span class="sm-arrow">→</span>
+            <div class="sm-node completed" data-state="dns">RESOLVING_DNS</div>
+            <span class="sm-arrow">→</span>
+            <div class="sm-node completed" data-state="keygen">KEY_GENERATION</div>
+            <span class="sm-arrow">→</span>
+            <div class="sm-node completed" data-state="waiting">WAITING_FOR_SERVER</div>
+            <span class="sm-arrow">→</span>
+            <div class="sm-node completed" data-state="verifying">VERIFYING_IDENTITY</div>
+            <span class="sm-arrow sm-decision">⬦</span>
+            <div class="sm-branch">
+              <div class="sm-path">
+                <span class="sm-check">✓</span>
+                <div class="sm-node completed" data-state="deriving">DERIVING_SECRETS</div>
+                <span class="sm-arrow">→</span>
+                <div class="sm-node active" data-state="tunnel">SECURE_TUNNEL</div>
+              </div>
+              <div class="sm-path">
+                <span class="sm-cross">✗</span>
+                <div class="sm-node" data-state="alert">ALERT_SENT</div>
+                <span class="sm-arrow">→</span>
+                <div class="sm-node" data-state="terminated">TERMINATED</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- —— ALGORITHMS SECTION —— -->
+      <section id="section-algorithms" class="section">
+        <h2 class="section-heading">Algorithm Configuration</h2>
+        <p class="section-description">
+          Configure which post-quantum algorithms KryptonBrowser uses for
+          TLS handshakes. Changes apply to new connections.
+        </p>
+
+        <div class="settings-card">
+          <h3 class="card-heading">Key Encapsulation Mechanism</h3>
+          <div class="radio-group">
+            <label class="radio-row">
+              <input type="radio" name="kem" value="ML-KEM-768" checked>
+              <div class="radio-content">
+                <div class="row-title">ML-KEM-768 <span class="recommended-badge">Recommended</span></div>
+                <div class="row-desc">NIST FIPS 203 · Security Level 3 · 1184B public key</div>
+              </div>
+            </label>
+            <label class="radio-row">
+              <input type="radio" name="kem" value="ML-KEM-1024">
+              <div class="radio-content">
+                <div class="row-title">ML-KEM-1024</div>
+                <div class="row-desc">NIST FIPS 203 · Security Level 5 · 1568B public key</div>
+              </div>
+            </label>
+            <label class="radio-row">
+              <input type="radio" name="kem" value="ML-KEM-512">
+              <div class="radio-content">
+                <div class="row-title">ML-KEM-512</div>
+                <div class="row-desc">NIST FIPS 203 · Security Level 1 · 800B public key</div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div class="settings-card">
+          <h3 class="card-heading">Digital Signature Algorithm</h3>
+          <div class="radio-group">
+            <label class="radio-row">
+              <input type="radio" name="sig" value="ML-DSA-65" checked>
+              <div class="radio-content">
+                <div class="row-title">ML-DSA-65 <span class="recommended-badge">Recommended</span></div>
+                <div class="row-desc">NIST FIPS 204 · Security Level 3 · 1952B public key · 3309B signature</div>
+              </div>
+            </label>
+            <label class="radio-row">
+              <input type="radio" name="sig" value="ML-DSA-87">
+              <div class="radio-content">
+                <div class="row-title">ML-DSA-87</div>
+                <div class="row-desc">NIST FIPS 204 · Security Level 5 · 2592B public key · 4627B signature</div>
+              </div>
+            </label>
+            <label class="radio-row">
+              <input type="radio" name="sig" value="ML-DSA-44">
+              <div class="radio-content">
+                <div class="row-title">ML-DSA-44</div>
+                <div class="row-desc">NIST FIPS 204 · Security Level 2 · 1312B public key · 2420B signature</div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div class="settings-card">
+          <h3 class="card-heading">Key Derivation</h3>
+          <div class="detail-row">
+            <span class="detail-label">KDF</span>
+            <span class="detail-value mono">HKDF-SHA3-256</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Salt</span>
+            <span class="detail-value mono">PQC-Hybrid-KryptonBrowser-v1</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Info</span>
+            <span class="detail-value mono">TLS13 derived</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- —— TRUST STORE SECTION —— -->
+      <section id="section-truststore" class="section">
+        <h2 class="section-heading">Indigenous PKI Trust Store</h2>
+        <p class="section-description">
+          Trusted Indian Root Certificate Authorities. In Fail-Closed mode,
+          connections not verified by these CAs are rejected.
+        </p>
+
+        <div class="settings-card" id="truststore-card">
+          <!-- Trust store rows populated by JS -->
+        </div>
+
+        <div class="button-row">
+          <button class="btn btn-outlined" id="btn-import-cert">
+            <span class="material-icons-outlined">add</span>
+            Import certificate
+          </button>
+          <button class="btn btn-outlined" id="btn-export-csv">
+            <span class="material-icons-outlined">download</span>
+            Export data (CSV)
+          </button>
+        </div>
+      </section>
+
+      <!-- —— HANDSHAKE LOG SECTION —— -->
+      <section id="section-handshake" class="section">
+        <h2 class="section-heading">Handshake State Transitions</h2>
+        <p class="section-description">
+          Real-time log of TLS handshake state transitions for the current session.
+        </p>
+        <div class="settings-card table-card">
+          <table id="handshake-log-table">
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>From</th>
+                <th>To</th>
+                <th>Event</th>
+                <th>Duration</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody id="handshake-log-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- —— SESSION HISTORY SECTION —— -->
+      <section id="section-sessions" class="section">
+        <h2 class="section-heading">Session History</h2>
+        <p class="section-description">
+          Historical record of PQC-protected connections.
+        </p>
+
+        <div class="filter-bar">
+          <div class="filter-input-wrap">
+            <span class="material-icons-outlined">search</span>
+            <input type="text" id="filter-domain" placeholder="Filter by domain…">
+          </div>
+          <select id="filter-status">
+            <option value="">All statuses</option>
+            <option value="COMPLETED">Completed</option>
+            <option value="FAILED">Failed</option>
+          </select>
+          <select id="filter-pki">
+            <option value="">All PKI</option>
+            <option value="indigenous">Indigenous only</option>
+            <option value="external">External only</option>
+          </select>
+        </div>
+
+        <div class="settings-card table-card">
+          <table id="session-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Domain</th>
+                <th>KEM</th>
+                <th>Signature</th>
+                <th>Status</th>
+                <th>Issuing CA</th>
+                <th>PKI</th>
+                <th>Latency</th>
+              </tr>
+            </thead>
+            <tbody id="session-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- —— DIAGNOSTICS SECTION —— -->
+      <section id="section-diagnostics" class="section">
+        <h2 class="section-heading">PQC Diagnostics</h2>
+        <p class="section-description">
+          Check the status of post-quantum cryptographic components and run self-tests.
+        </p>
+
+        <div class="settings-card">
+          <h3 class="card-heading">Component Status</h3>
+          <div class="detail-row">
+            <span class="detail-label">liboqs Version</span>
+            <span class="detail-value mono" id="diag-liboqs">0.10.1</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">ML-KEM-768</span>
+            <span class="detail-value badge badge-green" id="diag-mlkem">Available</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">ML-DSA-65</span>
+            <span class="detail-value badge badge-green" id="diag-mldsa">Available</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">X25519</span>
+            <span class="detail-value badge badge-green" id="diag-x25519">Available</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Hybrid Mode</span>
+            <span class="detail-value badge badge-green" id="diag-hybrid">Enabled</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Indigenous PKI Mode</span>
+            <span class="detail-value badge badge-amber" id="diag-pki-mode">Strict</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Fail-Closed Policy</span>
+            <span class="detail-value badge badge-red" id="diag-failclosed">Enforced</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Key Pool Size</span>
+            <span class="detail-value mono" id="diag-keypool">8 / 10</span>
+          </div>
+        </div>
+
+        <div class="settings-card">
+          <h3 class="card-heading">Self-Test</h3>
+          <p class="row-desc" style="margin-bottom:12px;">
+            Run NIST KAT verification for all PQC algorithms.
+          </p>
+          <button class="btn btn-filled" id="btn-run-selftest">
+            <span class="material-icons-outlined">play_arrow</span>
+            Run self-test
+          </button>
+          <div class="selftest-output" id="selftest-output"></div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script src="pqc_security.js"></script>
+</body>
+
+</html>
