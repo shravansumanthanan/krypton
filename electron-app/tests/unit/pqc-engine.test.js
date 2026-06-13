@@ -1,4 +1,4 @@
-const PQCEngine = require('../pqc-engine.js');
+const PQCEngine = require('../../src/main/pqc-engine.js');
 
 describe('PQCEngine', () => {
     beforeAll(async () => {

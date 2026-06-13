@@ -5,7 +5,7 @@ describe('Blocklist JSON Parsing', () => {
     let blocklist;
 
     beforeAll(() => {
-        const filePath = path.join(__dirname, '../blocklist.json');
+        const filePath = path.join(__dirname, '../../blocklist.json');
         const rawData = fs.readFileSync(filePath, 'utf-8');
         blocklist = JSON.parse(rawData);
     });
