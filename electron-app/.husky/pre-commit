@@ -1,0 +1,2 @@
+cd electron-app
+npx lint-staged
