@@ -70,6 +70,24 @@ npm run build:dir
 npm run build
 ```
 
+### Running with Docker
+
+You can run KryptonBrowser in a fully containerized environment using Docker. This isolates the browser's execution and is excellent for reproducible testing or CI/CD pipelines.
+
+1. **Build and Run (X11 Forwarding):**
+   ```bash
+   # Make sure X11 server is running and accessible (e.g. xhost +local:docker)
+   docker-compose up --build
+   ```
+   
+   If `DISPLAY` is not accessible, the container will automatically fall back to headless mode using `Xvfb`.
+
+2. **Manual Docker Build (Headless / Testing):**
+   ```bash
+   docker build -t krypton-browser .
+   docker run --rm -it krypton-browser
+   ```
+
 ## Testing
 
 KryptonBrowser is validated through rigorous automated testing covering the cryptographic engine, URL blocking, ephemeral session management, and end-to-end browser flows.

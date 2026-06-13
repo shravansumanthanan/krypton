@@ -8,6 +8,8 @@
     "build:ui": "vite build",
     "build": "npm run build:ui && electron-builder build --mac",
     "build:dir": "npm run build:ui && electron-builder build --mac --dir",
+    "build:linux": "npm run build:ui && electron-builder build --linux",
+    "build:dir:linux": "npm run build:ui && electron-builder build --linux --dir",
     "test:unit": "NODE_OPTIONS=--experimental-vm-modules jest tests/unit",
     "test:e2e": "playwright test",
     "lint": "eslint \"src/**/*.js\"",
