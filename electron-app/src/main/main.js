@@ -284,7 +284,16 @@ function createWindow() {
 
   // Intercept new window opens → send to renderer as a new tab
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    if (mainWindow) mainWindow.webContents.send('open-url-in-new-tab', url);
+    try {
+      const parsedUrl = new URL(url);
+      if (['http:', 'https:', 'krypton:', 'about:'].includes(parsedUrl.protocol)) {
+        if (mainWindow) mainWindow.webContents.send('open-url-in-new-tab', url);
+      } else {
+        log.warn(`[KryptonBrowser] Blocked window open for disallowed protocol: ${parsedUrl.protocol}`);
+      }
+    } catch {
+      // Invalid URL
+    }
     return { action: 'deny' };
   });
 
@@ -564,6 +573,40 @@ ipcMain.handle('pqc-get-stats', async () => pqcEngine.getSessionStats());
 ipcMain.handle('get-certificate-info', async (e, url) => {
   try {
     const { net } = require('electron');
+    const dns = require('dns');
+
+    if (typeof url !== 'string' || url.length === 0) return { error: 'Invalid URL' };
+
+    const parsedUrl = new URL(url);
+    if (parsedUrl.protocol !== 'https:' && parsedUrl.protocol !== 'http:') {
+      return { error: 'Invalid protocol for certificate info' };
+    }
+
+    // SSRF Prevention: Block requests to local/private networks
+    const hostname = parsedUrl.hostname.toLowerCase();
+
+    try {
+      const addresses = await dns.promises.lookup(hostname, { all: true });
+      for (const addr of addresses) {
+        const ip = addr.address;
+        if (
+          ip === '127.0.0.1' ||
+          ip === '0.0.0.0' ||
+          ip === '::1' ||
+          ip.startsWith('192.168.') ||
+          ip.startsWith('10.') ||
+          /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(ip) ||
+          ip.startsWith('169.254.') ||
+          ip.startsWith('fc00:') ||
+          ip.startsWith('fe80:')
+        ) {
+          return { error: 'Private IP resolution not allowed for certificate info' };
+        }
+      }
+    } catch(err) {
+      return { error: `DNS lookup failed: ${err.message}` };
+    }
+
     return await new Promise((resolve) => {
       const req = net.request(url);
       req.on('response', (res) => {
@@ -661,8 +704,11 @@ ipcMain.handle('get-downloads', async () => downloads);
 function isValidDownloadPath(p) {
   if (typeof p !== 'string' || p.length === 0) return false;
   const resolved = path.resolve(p);
-  const downloadsDir = app.getPath('downloads');
-  return resolved.startsWith(downloadsDir) || downloads.some((d) => d.savePath === resolved);
+  const downloadsDir = path.resolve(app.getPath('downloads'));
+  
+  // Prevent directory traversal: must be inside the downloadsDir exactly
+  const isInsideDownloads = resolved === downloadsDir || resolved.startsWith(downloadsDir + path.sep);
+  return isInsideDownloads || downloads.some((d) => d.savePath === resolved);
 }
 
 ipcMain.handle('open-download', async (e, p) => {
