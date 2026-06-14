@@ -27,7 +27,7 @@
     ]
   },
   "author": "KryptonBrowser Team",
-  "license": "BSD-3-Clause",
+  "license": "MIT",
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.60.0",
