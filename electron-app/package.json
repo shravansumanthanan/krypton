@@ -87,5 +87,6 @@
     "electron-log": "^5.4.4",
     "electron-updater": "^6.8.9",
     "node-addon-api": "^8.0.0"
-  }
+  },
+  "repository": "https://github.com/kryptonbrowser/krypton"
 }
