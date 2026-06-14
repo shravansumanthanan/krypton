@@ -7,9 +7,10 @@
     "start": "npm run build:ui && electron .",
     "build:ui": "vite build",
     "build": "npm run build:ui && electron-builder build --mac",
-    "build:dir": "npm run build:ui && electron-builder build --mac --dir",
-    "build:linux": "npm run build:ui && electron-builder build --linux",
-    "build:dir:linux": "npm run build:ui && electron-builder build --linux --dir",
+    "build:dir": "npm run build:native && npm run build:ui && electron-builder build --mac --dir",
+    "build:linux": "npm run build:native && npm run build:ui && electron-builder build --linux",
+    "build:dir:linux": "npm run build:native && npm run build:ui && electron-builder build --linux --dir",
+    "build:native": "cd native && cmake-js compile -T krypton_pqc_addon",
     "test:unit": "NODE_OPTIONS=--experimental-vm-modules jest tests/unit",
     "test:e2e": "playwright test",
     "lint": "eslint \"src/**/*.js\"",
@@ -63,8 +64,10 @@
   },
   "dependencies": {
     "@noble/post-quantum": "^0.5.4",
+    "cmake-js": "^7.3.0",
     "dompurify": "^3.4.10",
     "electron-log": "^5.4.4",
-    "electron-updater": "^6.8.9"
+    "electron-updater": "^6.8.9",
+    "node-addon-api": "^8.0.0"
   }
 }

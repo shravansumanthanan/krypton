@@ -1,10 +1,6 @@
 // KryptonBrowser — Real PQC Engine
 // FIPS 203 (ML-KEM-768) and FIPS 204 (ML-DSA-65)
-// using @noble/post-quantum (audited pure-JS, MIT licensed).
-//
-// Because @noble/post-quantum is pure ESM, this module uses a lazy
-// async-init pattern: call `await PQCEngine.init()` once on startup,
-// then all other methods are synchronous after that.
+// using native C++ addon wrapping liboqs.
 
 'use strict';
 
@@ -26,20 +22,21 @@ function logSession({ domain, kem, sig, status, ca, ms }) {
 }
 
 // ── Internals (set after init) ────────────────────────────────
-let _ml_kem768 = null;
-let _ml_dsa65 = null;
+let _addon = null;
 let _ready = false;
 
 const PQCEngine = {
   // ── Init (must be awaited once at startup) ───────────────
   async init() {
     if (_ready) return;
-    const kem = await import('@noble/post-quantum/ml-kem.js');
-    const dsa = await import('@noble/post-quantum/ml-dsa.js');
-    _ml_kem768 = kem.ml_kem768;
-    _ml_dsa65 = dsa.ml_dsa65;
-    _ready = true;
-    console.log('[PQCEngine] Initialised — ML-KEM-768 + ML-DSA-65 ready (FIPS 203/204)');
+    try {
+      _addon = require('../../native/build/Release/krypton_pqc_addon.node');
+      _ready = true;
+      console.log('[PQCEngine] Initialised — Native ML-KEM-768 + ML-DSA-65 ready (FIPS 203/204)');
+    } catch (e) {
+      console.error('[PQCEngine] Failed to load native addon:', e);
+      throw e;
+    }
   },
 
   get ready() {
@@ -50,7 +47,7 @@ const PQCEngine = {
 
   kemKeygen() {
     const t0 = performance.now();
-    const { publicKey, secretKey } = _ml_kem768.keygen();
+    const { publicKey, secretKey } = _addon.kemKeygen();
     const ms = Math.round(performance.now() - t0);
     return {
       publicKey,
@@ -67,7 +64,7 @@ const PQCEngine = {
     const pk =
       typeof publicKey === 'string' ? Uint8Array.from(Buffer.from(publicKey, 'hex')) : publicKey;
     const t0 = performance.now();
-    const { cipherText, sharedSecret } = _ml_kem768.encapsulate(pk);
+    const { cipherText, sharedSecret } = _addon.kemEncapsulate(pk);
     const ms = Math.round(performance.now() - t0);
     return {
       cipherText,
@@ -86,7 +83,7 @@ const PQCEngine = {
     const sk =
       typeof secretKey === 'string' ? Uint8Array.from(Buffer.from(secretKey, 'hex')) : secretKey;
     const t0 = performance.now();
-    const sharedSecret = _ml_kem768.decapsulate(ct, sk);
+    const sharedSecret = _addon.kemDecapsulate(ct, sk);
     const ms = Math.round(performance.now() - t0);
     return {
       sharedSecret,
@@ -99,7 +96,7 @@ const PQCEngine = {
 
   dsaKeygen() {
     const t0 = performance.now();
-    const { publicKey, secretKey } = _ml_dsa65.keygen();
+    const { publicKey, secretKey } = _addon.dsaKeygen();
     const ms = Math.round(performance.now() - t0);
     return {
       publicKey,
@@ -118,7 +115,7 @@ const PQCEngine = {
     const sk =
       typeof secretKey === 'string' ? Uint8Array.from(Buffer.from(secretKey, 'hex')) : secretKey;
     const t0 = performance.now();
-    const signature = _ml_dsa65.sign(msg, sk);
+    const signature = _addon.dsaSign(msg, sk);
     return {
       signature,
       signatureHex: Buffer.from(signature).toString('hex'),
@@ -134,7 +131,7 @@ const PQCEngine = {
     const sig =
       typeof signature === 'string' ? Uint8Array.from(Buffer.from(signature, 'hex')) : signature;
     const t0 = performance.now();
-    const valid = _ml_dsa65.verify(sig, msg, pk);
+    const valid = _addon.dsaVerify(sig, msg, pk);
     return { valid, ms: Math.round(performance.now() - t0) };
   },
 
@@ -146,7 +143,7 @@ const PQCEngine = {
     let allPass = true;
 
     lines.push('KryptonBrowser PQC Self-Test — FIPS 203 + FIPS 204');
-    lines.push(`Library: @noble/post-quantum (audited)`);
+    lines.push(`Library: Native C++ Addon (liboqs)`);
     lines.push(`Timestamp: ${new Date().toISOString()}`);
     lines.push('═'.repeat(54));
     lines.push('');
@@ -242,9 +239,9 @@ const PQCEngine = {
     if (!_ready) return { ms: 0, verified: false };
     try {
       const t0 = performance.now();
-      const { publicKey, secretKey } = _ml_kem768.keygen();
-      const { cipherText, sharedSecret: ss1 } = _ml_kem768.encapsulate(publicKey);
-      const ss2 = _ml_kem768.decapsulate(cipherText, secretKey);
+      const { publicKey, secretKey } = _addon.kemKeygen();
+      const { cipherText, sharedSecret: ss1 } = _addon.kemEncapsulate(publicKey);
+      const ss2 = _addon.kemDecapsulate(cipherText, secretKey);
       const ms = Math.round(performance.now() - t0);
       const verified = Buffer.from(ss1).toString('hex') === Buffer.from(ss2).toString('hex');
       logSession({
