@@ -82,7 +82,7 @@
   },
   "dependencies": {
     "@noble/post-quantum": "^0.6.1",
-    "cmake-js": "^7.3.0",
+    "cmake-js": "^8.0.0",
     "dompurify": "^3.4.10",
     "electron-log": "^5.4.4",
     "electron-updater": "^6.8.9",
