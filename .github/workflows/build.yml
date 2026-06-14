@@ -32,6 +32,13 @@ jobs:
       working-directory: electron-app
       run: npm audit --audit-level=high
 
+    - name: Install Build Tools
+      run: brew install cmake ninja
+
+    - name: Build Native PQC Addon
+      working-directory: electron-app
+      run: npm run build:native
+
     - name: Run Unit Tests
       working-directory: electron-app
       run: npm run test:unit
