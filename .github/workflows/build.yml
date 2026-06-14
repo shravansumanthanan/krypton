@@ -16,7 +16,7 @@ jobs:
     - name: Use Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: 20
+        node-version: 22
         cache: 'npm'
         cache-dependency-path: electron-app/package-lock.json
 
@@ -39,6 +39,10 @@ jobs:
       working-directory: electron-app
       run: npm run build:native
 
+    - name: Build UI
+      working-directory: electron-app
+      run: npm run build:ui
+
     - name: Run Unit Tests
       working-directory: electron-app
       run: npm run test:unit
@@ -50,6 +54,7 @@ jobs:
     - name: Run E2E Tests
       working-directory: electron-app
       run: npm run test:e2e
+      timeout-minutes: 5
 
     - name: Upload Playwright Report
       uses: actions/upload-artifact@v4
@@ -59,6 +64,6 @@ jobs:
         path: electron-app/playwright-report/
         retention-days: 7
 
-    - name: Build Application
+    - name: Package Application
       working-directory: electron-app
       run: npm run build:dir
