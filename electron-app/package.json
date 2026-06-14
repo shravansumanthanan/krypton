@@ -31,8 +31,8 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.60.0",
-    "electron": "^33.0.0",
-    "electron-builder": "^25.1.8",
+    "electron": "^42.4.0",
+    "electron-builder": "^26.15.3",
     "eslint": "^10.5.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.6",
@@ -46,7 +46,9 @@
   "build": {
     "appId": "com.krypton.browser",
     "productName": "KryptonBrowser",
-    "publish": ["github"],
+    "publish": [
+      "github"
+    ],
     "mac": {
       "category": "public.app-category.productivity",
       "target": [
@@ -79,7 +81,7 @@
     }
   },
   "dependencies": {
-    "@noble/post-quantum": "^0.5.4",
+    "@noble/post-quantum": "^0.6.1",
     "cmake-js": "^7.3.0",
     "dompurify": "^3.4.10",
     "electron-log": "^5.4.4",
