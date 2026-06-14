@@ -19,8 +19,14 @@ if(CMAKE_OSX_ARCHITECTURES STREQUAL "x86_64")
     set(CMAKE_SYSTEM_PROCESSOR "x86_64")
 endif()
 
-# Add liboqs subdirectory
-add_subdirectory(liboqs)
+# Download and add liboqs using FetchContent
+include(FetchContent)
+FetchContent_Declare(
+  liboqs
+  GIT_REPOSITORY https://github.com/open-quantum-safe/liboqs.git
+  GIT_TAG        0.10.0
+)
+FetchContent_MakeAvailable(liboqs)
 
 # 2. Get node-addon-api include directory
 execute_process(COMMAND node -p "require('node-addon-api').include"
@@ -38,8 +44,8 @@ target_link_libraries(${PROJECT_NAME} PRIVATE ${CMAKE_JS_LIB} oqs)
 target_include_directories(${PROJECT_NAME} PRIVATE 
     ${CMAKE_JS_INC} 
     ${NODE_ADDON_API_DIR} 
-    liboqs/src
-    ${CMAKE_BINARY_DIR}/liboqs/include
+    ${liboqs_SOURCE_DIR}/src
+    ${liboqs_BINARY_DIR}/include
 )
 
 # Mac-specific linkage flags for Node Addons
