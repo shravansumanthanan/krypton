@@ -46,9 +46,25 @@
   "build": {
     "appId": "com.krypton.browser",
     "productName": "KryptonBrowser",
+    "publish": ["github"],
     "mac": {
       "category": "public.app-category.productivity",
-      "target": "dir"
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "tar.gz"
+      ]
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "zip"
+      ]
     },
     "files": [
       "src/main/main.js",
