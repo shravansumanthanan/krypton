@@ -32,7 +32,7 @@
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.60.0",
     "electron": "^33.0.0",
-    "electron-builder": "^25.1.8",
+    "electron-builder": "^26.15.3",
     "eslint": "^10.5.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.6",
