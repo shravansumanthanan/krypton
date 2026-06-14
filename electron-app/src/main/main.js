@@ -289,7 +289,9 @@ function createWindow() {
       if (['http:', 'https:', 'krypton:', 'about:'].includes(parsedUrl.protocol)) {
         if (mainWindow) mainWindow.webContents.send('open-url-in-new-tab', url);
       } else {
-        log.warn(`[KryptonBrowser] Blocked window open for disallowed protocol: ${parsedUrl.protocol}`);
+        log.warn(
+          `[KryptonBrowser] Blocked window open for disallowed protocol: ${parsedUrl.protocol}`,
+        );
       }
     } catch {
       // Invalid URL
@@ -603,7 +605,7 @@ ipcMain.handle('get-certificate-info', async (e, url) => {
           return { error: 'Private IP resolution not allowed for certificate info' };
         }
       }
-    } catch(err) {
+    } catch (err) {
       return { error: `DNS lookup failed: ${err.message}` };
     }
 
@@ -705,9 +707,10 @@ function isValidDownloadPath(p) {
   if (typeof p !== 'string' || p.length === 0) return false;
   const resolved = path.resolve(p);
   const downloadsDir = path.resolve(app.getPath('downloads'));
-  
+
   // Prevent directory traversal: must be inside the downloadsDir exactly
-  const isInsideDownloads = resolved === downloadsDir || resolved.startsWith(downloadsDir + path.sep);
+  const isInsideDownloads =
+    resolved === downloadsDir || resolved.startsWith(downloadsDir + path.sep);
   return isInsideDownloads || downloads.some((d) => d.savePath === resolved);
 }
 
