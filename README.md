@@ -3,7 +3,7 @@
 > A privacy-first, zero-trust Electron browser built for the general public to defend against post-quantum surveillance and local forensic analysis.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Build Status](https://github.com/kryptonbrowser/krypton/actions/workflows/build.yml/badge.svg)](https://github.com/kryptonbrowser/krypton/actions/workflows/build.yml)
+[![Build Status](https://github.com/sterlingsuman/krypton/actions/workflows/build.yml/badge.svg)](https://github.com/sterlingsuman/krypton/actions/workflows/build.yml)
 
 ## Why This Exists
 
@@ -23,7 +23,7 @@ KryptonBrowser brings defense-in-depth to the general public. It seamlessly inte
 ## Quick Start
 
 ```bash
-git clone https://github.com/kryptonbrowser/krypton.git
+git clone https://github.com/sterlingsuman/krypton.git
 cd krypton/electron-app
 npm install
 npm start
@@ -34,7 +34,7 @@ npm start
 **Prerequisites**: Node.js 20+, npm 10+, macOS (for `dmg`/`app` packaging)
 
 ```bash
-git clone https://github.com/kryptonbrowser/krypton.git
+git clone https://github.com/sterlingsuman/krypton.git
 cd krypton/electron-app
 npm install
 ```
@@ -119,4 +119,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
 ## License
 
-MIT © [KryptonBrowserTeam](https://github.com/kryptonbrowser)
+MIT © [Shravan Sumanthanan](https://github.com/sterlingsuman)
