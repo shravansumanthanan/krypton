@@ -11,7 +11,6 @@ const {
   session,
   Menu,
   shell,
-  webContents,
   dialog,
   globalShortcut,
 } = require('electron');

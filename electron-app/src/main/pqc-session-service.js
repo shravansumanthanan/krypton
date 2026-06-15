@@ -9,7 +9,7 @@
 
 'use strict';
 
-const path = require('path');
+const log = require('electron-log');
 
 // Schema constants — keep in sync with PQCSessionRecord fields
 const CREATE_TABLE_SQL = `
@@ -116,7 +116,7 @@ class PQCSessionService {
       this._ready = true;
       return true;
     } catch (err) {
-      console.error('[PQCSessionService] Failed to initialize SQLite DB:', err.message);
+      log.error('[PQCSessionService] Failed to initialize SQLite DB:', err.message);
       this._ready = false;
       return false;
     }
@@ -176,7 +176,7 @@ class PQCSessionService {
 
       return true;
     } catch (err) {
-      console.error('[PQCSessionService] recordSession error:', err.message);
+      log.error('[PQCSessionService] recordSession error:', err.message);
       return false;
     }
   }
@@ -215,7 +215,7 @@ class PQCSessionService {
         pki: r.indigenous_verified ? 'INDIGENOUS' : 'STANDARD',
       }));
     } catch (err) {
-      console.error('[PQCSessionService] getRecentSessions error:', err.message);
+      log.error('[PQCSessionService] getRecentSessions error:', err.message);
       return [];
     }
   }
@@ -266,7 +266,7 @@ class PQCSessionService {
         pki: r.indigenous_verified ? 'INDIGENOUS' : 'STANDARD',
       };
     } catch (err) {
-      console.error('[PQCSessionService] getSessionByDomain error:', err.message);
+      log.error('[PQCSessionService] getSessionByDomain error:', err.message);
       return null;
     }
   }
@@ -288,7 +288,7 @@ class PQCSessionService {
         avgHandshakeMs: Math.round(row.avg_handshake_ms || 0),
       };
     } catch (err) {
-      console.error('[PQCSessionService] getStats error:', err.message);
+      log.error('[PQCSessionService] getStats error:', err.message);
       return { total: 0, completed: 0, failed: 0, indigenous: 0, avgHandshakeMs: 0 };
     }
   }

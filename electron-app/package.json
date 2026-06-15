@@ -11,7 +11,7 @@
     "build:linux": "npm run build:native && npm run build:ui && electron-builder build --linux",
     "build:dir:linux": "npm run build:native && npm run build:ui && electron-builder build --linux --dir",
     "build:native": "cd native && cmake-js compile -T krypton_pqc_addon",
-    "test:unit": "NODE_OPTIONS=--experimental-vm-modules jest tests/unit",
+    "test:unit": "cross-env NODE_OPTIONS=--experimental-vm-modules jest tests/unit",
     "test:e2e": "playwright test",
     "lint": "eslint \"src/**/*.js\"",
     "format": "prettier --write \"src/**/*.{js,html,css}\"",
@@ -31,6 +31,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.60.0",
+    "cross-env": "^10.1.0",
     "electron": "^42.4.0",
     "electron-builder": "^26.15.3",
     "eslint": "^10.5.0",

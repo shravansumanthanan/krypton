@@ -14,20 +14,8 @@
 
 const https = require('https');
 const http = require('http');
-const crypto = require('crypto');
 
 const OCSP_TIMEOUT_MS = 3000;
-
-// Known OCSP responder URLs for well-known CAs (fast-path cache)
-// These are checked in order before attempting the AIA extension lookup.
-const WELL_KNOWN_OCSP = {
-  'r3.o.lencr.org': 'http://r3.o.lencr.org',
-  'ocsp.digicert.com': 'http://ocsp.digicert.com',
-  'ocsp.sectigo.com': 'http://ocsp.sectigo.com',
-  'ocsp.usertrust.com': 'http://ocsp.usertrust.com',
-  'ocsp.comodoca.com': 'http://ocsp.comodoca.com',
-  'ocsp2.globalsign.com': 'http://ocsp2.globalsign.com',
-};
 
 class PQCCertificateValidator {
   constructor() {

@@ -85,9 +85,9 @@ jobs:
       working-directory: electron-app
       run: |
         if [ "$RUNNER_OS" == "Linux" ]; then
-          xvfb-run --auto-servernum --server-args="-screen 0 1280x960x24" npm run test:e2e
+          xvfb-run --auto-servernum --server-args="-screen 0 1280x960x24" npm run test:e2e -- --workers=1
         else
-          npm run test:e2e
+          npm run test:e2e -- --workers=1
         fi
       shell: bash
       timeout-minutes: 5

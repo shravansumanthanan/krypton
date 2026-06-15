@@ -20,7 +20,6 @@ let zoomLevel = 100;
 
 // Find-in-page state
 let findBarVisible = false;
-let findCurrentTabId = null;
 
 // Per-tab blocked request counts (populated from IPC)
 let shieldTotalBlocked = 0;
@@ -896,6 +895,7 @@ function createHistoryPage(tabId) {
             showSettingsToast('History exported successfully');
           }
         } catch (e) {
+          // eslint-disable-next-line no-console
           console.error('History export failed', e);
         }
       }
@@ -1267,7 +1267,7 @@ function createSettingsPage(tabId) {
   }
 
   // ── APPEARANCE toggles ──
-  wireToggle('stgl-bookmarks-' + tabId, 'krypton_show_bookmarks', (on) => {
+  wireToggle('stgl-bookmarks-' + tabId, 'krypton_show_bookmarks', () => {
     applyBookmarksBarVisibility();
   });
   wireToggle('stgl-wallpaper-' + tabId, 'krypton_show_wallpaper');
@@ -2742,7 +2742,6 @@ function toggleFindBar() {
   if (findBarVisible) {
     $findInput.focus();
     $findInput.select();
-    findCurrentTabId = activeTabId;
   } else {
     closeFindBar();
   }
@@ -2870,7 +2869,6 @@ function showContextMenu(params, x, y, wv) {
       label: 'Copy',
       action: () => navigator.clipboard.writeText(params.selectionText),
     });
-    const q = encodeURIComponent(params.selectionText);
     items.push({
       icon: 'search',
       label: `Search for “${params.selectionText.substring(0, 30)}…”`,
