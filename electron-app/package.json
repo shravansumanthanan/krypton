@@ -1,5 +1,5 @@
 {
-  "name": "kryptonbrowser",
+  "name": "sterlingsuman",
   "version": "1.0.0",
   "description": "KryptonBrowser — A Post-Quantum Cryptography enabled secure browser",
   "main": "src/main/main.js",
@@ -96,5 +96,5 @@
     "electron-updater": "^6.8.9",
     "node-addon-api": "^8.0.0"
   },
-  "repository": "https://github.com/kryptonbrowser/krypton"
+  "repository": "https://github.com/sterlingsuman/krypton"
 }

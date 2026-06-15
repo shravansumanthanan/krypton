@@ -2,7 +2,7 @@
 
 ## Project
 Privacy-first, post-quantum cryptography (PQC) Electron browser.
-Repo: `/path/to/krypton`
+Repo: `/Users/sterlingsuman/Desktop/krypton`
 
 ## Tech Stack
 - **Runtime**: Electron 42 + Node.js 22 (CommonJS main process), Vite 8 (renderer bundler)
