@@ -8,7 +8,11 @@ on:
 
 jobs:
   build:
-    runs-on: macos-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+      fail-fast: false
 
     steps:
     - uses: actions/checkout@v4
@@ -32,8 +36,19 @@ jobs:
       working-directory: electron-app
       run: npm audit --audit-level=high
 
-    - name: Install Build Tools
+    - name: Install Linux build dependencies
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential cmake ninja-build xvfb
+
+    - name: Install macOS build dependencies
+      if: matrix.os == 'macos-latest'
       run: brew install cmake ninja
+
+    - name: Install Windows build dependencies
+      if: matrix.os == 'windows-latest'
+      run: choco install cmake ninja -y
 
     - name: Build Native PQC Addon
       working-directory: electron-app
@@ -53,7 +68,13 @@ jobs:
 
     - name: Run E2E Tests
       working-directory: electron-app
-      run: npm run test:e2e
+      run: |
+        if [ "$RUNNER_OS" == "Linux" ]; then
+          xvfb-run --auto-servernum --server-args="-screen 0 1280x960x24" npm run test:e2e
+        else
+          npm run test:e2e
+        fi
+      shell: bash
       timeout-minutes: 5
 
     - name: Upload Playwright Report
