@@ -59,4 +59,7 @@ contextBridge.exposeInMainWorld('kryptonBrowser', {
   onPermissionRequest: (cb) => ipcRenderer.on('permission-request', (e, d) => cb(d)),
   onClearBrowsingData: (cb) => ipcRenderer.on('clear-browsing-data', () => cb()),
   onMenuAction: (cb) => ipcRenderer.on('menu-action', (e, action) => cb(action)),
+
+  // ── History ──
+  exportHistory: (data) => ipcRenderer.invoke('export-history', data),
 });

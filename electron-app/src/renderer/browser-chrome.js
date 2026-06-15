@@ -559,6 +559,47 @@ function createWebview(tabId, url) {
   wv.addEventListener('did-stop-loading', () => {
     showLoading(false);
     updateReloadButton(false);
+
+    // Apply Extension Stubs
+    const extMap = {};
+    extensions.forEach((ext) => (extMap[ext.id] = ext.enabled));
+
+    // Dark Reader Stub
+    if (extMap['dark-reader']) {
+      wv.insertCSS(
+        'html, body { filter: invert(1) hue-rotate(180deg) !important; background: #111 !important; } img, video, iframe { filter: invert(1) hue-rotate(180deg) !important; }',
+      ).catch(() => {});
+    }
+
+    // Speedreader Stub
+    if (extMap['speedreader']) {
+      wv.insertCSS(
+        'body { max-width: 800px; margin: 0 auto; font-family: Georgia, serif; line-height: 1.6; } header, footer, aside, nav { display: none !important; }',
+      ).catch(() => {});
+    }
+
+    // Password Manager Stub
+    if (extMap['password-mgr']) {
+      wv.executeJavaScript(
+        `
+        document.querySelectorAll('input[type="password"]').forEach(pw => {
+          pw.style.border = '2px solid #34d399';
+          pw.title = 'Krypton Password Manager: Ready to autofill';
+        });
+      `,
+      ).catch(() => {});
+    }
+
+    // Translate Stub
+    if (extMap['translate']) {
+      wv.executeJavaScript(
+        `
+        if (document.documentElement.lang && !document.documentElement.lang.startsWith('en')) {
+          console.log('Krypton Translate: Offer to translate page from ' + document.documentElement.lang);
+        }
+      `,
+      ).catch(() => {});
+    }
   });
 
   wv.addEventListener('did-navigate', (e) => {
@@ -803,6 +844,9 @@ function createHistoryPage(tabId) {
     '<a class="hist-nav-item"><span class="material-icons-outlined">bookmark_border</span>Bookmarks</a>' +
     '<a class="hist-nav-item"><span class="material-icons-outlined">file_download</span>Downloads</a>' +
     '<div class="hist-sidebar-divider"></div>' +
+    '<a class="hist-nav-item hist-delete-link" id="he-' +
+    tabId +
+    '"><span class="material-icons-outlined">file_download</span>Export history</a>' +
     '<a class="hist-nav-item hist-delete-link" id="hc-' +
     tabId +
     '"><span class="material-icons-outlined">delete_outline</span>Delete browsing data</a>' +
@@ -839,6 +883,25 @@ function createHistoryPage(tabId) {
 
   const si = div.querySelector('#hs-' + tabId);
   if (si) si.addEventListener('input', () => render(si.value));
+
+  const he = div.querySelector('#he-' + tabId);
+  if (he) {
+    he.addEventListener('click', async () => {
+      if (window.kryptonBrowser && window.kryptonBrowser.exportHistory) {
+        try {
+          // Export the current hist array
+          const success = await window.kryptonBrowser.exportHistory(JSON.stringify(hist, null, 2));
+          if (success && typeof showSettingsToast === 'function') {
+            // In case settings toast works from here
+            showSettingsToast('History exported successfully');
+          }
+        } catch (e) {
+          console.error('History export failed', e);
+        }
+      }
+    });
+  }
+
   const cb = div.querySelector('#hc-' + tabId);
   if (cb)
     cb.addEventListener('click', () => {
@@ -2411,59 +2474,89 @@ function showAutocomplete(query) {
     type: 'Search',
   });
 
-  if (results.length === 0) {
-    hideAutocomplete();
-    return;
-  }
-
-  // Limit
-  const limited = results.slice(0, 8);
-  $acDropdown.innerHTML = '';
-  acSelectedIndex = -1;
-
-  limited.forEach((item, i) => {
-    const row = document.createElement('div');
-    row.className = 'ac-item';
-    row.dataset.index = i;
-
-    // Highlight matching text
-    let displayTitle = item.title;
-    const matchIdx = displayTitle.toLowerCase().indexOf(q);
-    if (matchIdx >= 0) {
-      displayTitle =
-        displayTitle.substring(0, matchIdx) +
-        '<b>' +
-        displayTitle.substring(matchIdx, matchIdx + q.length) +
-        '</b>' +
-        displayTitle.substring(matchIdx + q.length);
+  function renderResults() {
+    if (results.length === 0) {
+      hideAutocomplete();
+      return;
     }
 
-    row.innerHTML = sanitizeHTML(
-      '<span class="material-icons-outlined">' +
-        item.icon +
-        '</span>' +
-        '<span class="ac-title">' +
-        displayTitle +
-        '</span>' +
-        '<span class="ac-url">' +
-        item.url +
-        '</span>' +
-        '<span class="ac-type">' +
-        item.type +
-        '</span>',
-    );
+    // Limit
+    const limited = results.slice(0, 8);
+    $acDropdown.innerHTML = '';
+    acSelectedIndex = -1;
 
-    row.addEventListener('mousedown', (e) => {
-      e.preventDefault(); // prevent blur
-      navigateActiveTab(item.url);
-      hideAutocomplete();
-      $urlInput.blur();
+    limited.forEach((item, i) => {
+      const row = document.createElement('div');
+      row.className = 'ac-item';
+      row.dataset.index = i;
+
+      // Highlight matching text
+      let displayTitle = item.title;
+      const matchIdx = displayTitle.toLowerCase().indexOf(q);
+      if (matchIdx >= 0) {
+        displayTitle =
+          displayTitle.substring(0, matchIdx) +
+          '<b>' +
+          displayTitle.substring(matchIdx, matchIdx + q.length) +
+          '</b>' +
+          displayTitle.substring(matchIdx + q.length);
+      }
+
+      row.innerHTML = sanitizeHTML(
+        '<span class="material-icons-outlined">' +
+          item.icon +
+          '</span>' +
+          '<span class="ac-title">' +
+          displayTitle +
+          '</span>' +
+          '<span class="ac-url">' +
+          item.url +
+          '</span>' +
+          '<span class="ac-type">' +
+          item.type +
+          '</span>',
+      );
+
+      row.addEventListener('mousedown', (e) => {
+        e.preventDefault(); // prevent blur
+        navigateActiveTab(item.url);
+        hideAutocomplete();
+        $urlInput.blur();
+      });
+
+      $acDropdown.appendChild(row);
     });
 
-    $acDropdown.appendChild(row);
-  });
+    $acDropdown.style.display = 'block';
+  }
 
-  $acDropdown.style.display = 'block';
+  // Render initial synchronous results immediately
+  renderResults();
+
+  // DuckDuckGo autocomplete integration
+  if (query.length > 1) {
+    fetch(`https://duckduckgo.com/ac/?q=${encodeURIComponent(query)}&type=list`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && data[1]) {
+          const suggestions = data[1].slice(0, 4);
+          let added = false;
+          suggestions.forEach((sug) => {
+            if (!results.some((r) => r.title === sug)) {
+              results.push({
+                title: sug,
+                url: _curSE.url + encodeURIComponent(sug),
+                icon: 'search',
+                type: 'Suggestion',
+              });
+              added = true;
+            }
+          });
+          if (added) renderResults();
+        }
+      })
+      .catch(() => {});
+  }
 }
 
 function hideAutocomplete() {
