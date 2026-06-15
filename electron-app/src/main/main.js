@@ -108,11 +108,16 @@ function sendToActiveWindow(channel, ...args) {
 // ═══ PQC Engine ═══
 const pqcEngine = require('./pqc-engine');
 
+// ═══ PQC Services (Session Persistence + Handshake FSM + OCSP) ═══
+const PQCSessionService = require('./pqc-session-service');
+const { PQCHandshakeService } = require('./pqc-handshake-service');
+const PQCCertificateValidator = require('./pqc-certificate-validator');
+
 // ═══ Enable PQC/ML-KEM in Chromium's TLS stack ═══
 // Chromium 124+ supports ML-KEM-768 for TLS key exchange natively.
 app.commandLine.appendSwitch('enable-features', 'PostQuantumKeyAgreement,UseMLKEM');
 app.commandLine.appendSwitch('enable-quic');
-app.commandLine.appendSwitch('site-per-process');
+// app.commandLine.appendSwitch('site-per-process'); // Causes SIGTRAP with webview
 // Enforce minimum TLS 1.3 to prevent downgrade attacks and ensure PQC can be negotiated
 app.commandLine.appendSwitch('ssl-version-min', 'tls1.3');
 
@@ -411,13 +416,32 @@ function setupRequestInterception(ses) {
     callback(['clipboard-read', 'clipboard-sanitized-write'].includes(permission));
   });
 
-  // 5. Certificate verification — record PQC sessions
+  // 5. Certificate verification — record PQC sessions + async OCSP
   ses.setCertificateVerifyProc((request, callback) => {
     if (request.verificationResult === 'net::OK') {
       pqcSessionCount++;
-      // Record a real PQC operation in the engine for this domain
       const domain = request.hostname;
-      pqcEngine.recordTlsSession(domain);
+
+      // Drive the handshake state machine (sync part)
+      pqcHandshakeService.onCertVerified(domain, { success: true });
+
+      // Async OCSP check runs in the background (fail-open — does not block TLS)
+      pqcCertValidator
+        .checkOCSP(domain, {
+          issuerName: request.certificate?.issuer?.commonName || '',
+          ocspUrls: [],
+        })
+        .then((ocspResult) => {
+          if (ocspResult.warning) {
+            log.warn(`[OCSP] Fail-open for ${domain}: ${ocspResult.message}`);
+          }
+        })
+        .catch((err) => {
+          log.warn(`[OCSP] Async check error for ${domain}:`, err.message);
+        });
+    } else {
+      // Failed verification — record as failed handshake
+      pqcHandshakeService.onCertVerified(request.hostname, { success: false });
     }
     callback(-3); // Use Chromium default verification
   });
@@ -567,9 +591,26 @@ ipcMain.handle('pqc-dsa-keygen', async () => {
   };
 });
 
-// PQC Session Log
-ipcMain.handle('pqc-get-sessions', async () => pqcEngine.getSessionLog());
+// PQC Session Log — now backed by SQLite via pqcEngine delegation
+ipcMain.handle('pqc-get-sessions', async () => pqcEngine.getSessionLog(100));
 ipcMain.handle('pqc-get-stats', async () => pqcEngine.getSessionStats());
+
+// PQC OCSP Status for current domain
+ipcMain.handle('pqc-get-ocsp-status', async (e, domain) => {
+  if (typeof domain !== 'string' || domain.length === 0 || domain.length > 253) {
+    return { result: 'unknown', warning: true, message: 'Invalid domain' };
+  }
+  return pqcCertValidator.checkOCSP(domain);
+});
+
+// PQC Hybrid Key Pool (pre-generate keypairs for 0-RTT)
+ipcMain.handle('pqc-get-key-pool', async (e, count) => {
+  const n = Math.min(parseInt(count) || 5, 10);
+  return pqcEngine.hybridKeygenPool(n);
+});
+
+// PQC liboqs version
+ipcMain.handle('pqc-get-liboqs-version', async () => pqcEngine.getLiboqsVersion());
 
 // Certificate info
 ipcMain.handle('get-certificate-info', async (e, url) => {
@@ -879,6 +920,12 @@ function createMenu() {
   );
 }
 
+// ═══ Service Instances (initialized in app.whenReady) ═══
+// These are module-level references, initialized after app is ready.
+let pqcSessionService = null;
+let pqcHandshakeService = null;
+let pqcCertValidator = null;
+
 // ═══ App Lifecycle ═══
 let isQuitting = false;
 
@@ -909,7 +956,26 @@ ipcMain.handle('set-panic-shortcut', async (e, shortcutStr) => {
 });
 
 app.whenReady().then(async () => {
-  await pqcEngine.init(); // Load ESM PQC modules before anything else
+  await pqcEngine.init(); // Load native PQC addon before anything else
+
+  // ── Init PQC Services ──────────────────────────────────────────
+  // DB lives in persistentDataPath, NOT in burnerTempDir (it is NOT wiped on quit)
+  pqcSessionService = new PQCSessionService(path.join(persistentDataPath, 'pqc_sessions.db'));
+  const dbReady = pqcSessionService.init();
+  if (dbReady) {
+    pqcEngine.setSessionService(pqcSessionService);
+    log.info(
+      '[KryptonBrowser] PQC session DB initialized at',
+      path.join(persistentDataPath, 'pqc_sessions.db'),
+    );
+  } else {
+    log.warn('[KryptonBrowser] PQC session DB failed to init — falling back to in-memory log');
+  }
+
+  pqcCertValidator = new PQCCertificateValidator();
+  pqcHandshakeService = new PQCHandshakeService(pqcSessionService, pqcCertValidator);
+  // ──────────────────────────────────────────────────────
+
   loadBlocklist();
   loadConfigFile();
   createMenu();
@@ -940,6 +1006,11 @@ app.on('before-quit', (e) => {
   if (isQuitting) return; // Allow quit
   e.preventDefault(); // Prevent immediate quit
   shredSessionDataAsync().then(() => {
+    // Close SQLite DB gracefully before quit
+    if (pqcSessionService) {
+      pqcSessionService.close();
+      log.info('[KryptonBrowser] PQC session DB closed.');
+    }
     isQuitting = true;
     app.quit();
   });

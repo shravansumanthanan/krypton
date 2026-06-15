@@ -4,21 +4,66 @@
 
 'use strict';
 
-// ── Live Session Log ──────────────────────────────────────────
+// ── SQLite Session Service (set by main.js after DB init) ─────
+// Falls back to in-memory log when the service isn't ready yet.
+let _sessionService = null;
+
+// ── In-Memory Fallback Session Log ───────────────────────────
+// Used ONLY if the SQLite service is unavailable.
 const pqcSessionLog = [];
 
-function logSession({ domain, kem, sig, status, ca, ms }) {
-  pqcSessionLog.unshift({
-    time: new Date().toISOString().replace('T', ' ').slice(0, 19),
+function logSession({
+  domain,
+  kem,
+  sig,
+  status,
+  ca,
+  ms,
+  handshakeId,
+  sessionId,
+  pkiResult,
+  indigenousVerified,
+}) {
+  const record = {
+    handshakeId: handshakeId || _uuid(),
+    sessionId: sessionId || _uuid(),
     domain: domain || '—',
     kem: kem || 'ML-KEM-768',
     sig: sig || 'ML-DSA-65',
     status: status || 'COMPLETED',
     ca: ca || '—',
-    pki: 'STANDARD',
+    pki: indigenousVerified ? 'INDIGENOUS' : 'STANDARD',
     ms: ms || 0,
+    pkiResult: pkiResult || 'PENDING',
+    time: new Date().toISOString().replace('T', ' ').slice(0, 19),
+  };
+
+  // Persist to SQLite if available
+  if (_sessionService && _sessionService.ready) {
+    _sessionService.recordSession({
+      handshakeId: record.handshakeId,
+      sessionId: record.sessionId,
+      domain: record.domain,
+      kemAlgorithm: record.kem,
+      sigAlgorithm: record.sig,
+      status: record.status,
+      issuingCa: record.ca,
+      ms: record.ms,
+      pkiResult: record.pkiResult,
+      indigenousVerified: record.pki === 'INDIGENOUS',
+    });
+  } else {
+    // In-memory fallback: rolling 200-entry buffer
+    pqcSessionLog.unshift(record);
+    if (pqcSessionLog.length > 200) pqcSessionLog.pop();
+  }
+}
+
+function _uuid() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
   });
-  if (pqcSessionLog.length > 200) pqcSessionLog.pop();
 }
 
 // ── Internals (set after init) ────────────────────────────────
@@ -32,11 +77,22 @@ const PQCEngine = {
     try {
       _addon = require('../../native/build/Release/krypton_pqc_addon.node');
       _ready = true;
-      console.log('[PQCEngine] Initialised — Native ML-KEM-768 + ML-DSA-65 ready (FIPS 203/204)');
+      const version = _addon.getLiboqsVersion ? _addon.getLiboqsVersion() : 'unknown';
+      console.log(
+        `[PQCEngine] Initialised — Native ML-KEM-768 + ML-DSA-65 ready (FIPS 203/204) liboqs=${version}`,
+      );
     } catch (e) {
       console.error('[PQCEngine] Failed to load native addon:', e);
       throw e;
     }
+  },
+
+  /**
+   * Wire the SQLite session service. Called by main.js after PQCSessionService.init().
+   * @param {import('./pqc-session-service')} service
+   */
+  setSessionService(service) {
+    _sessionService = service;
   },
 
   get ready() {
@@ -259,15 +315,89 @@ const PQCEngine = {
     }
   },
 
+  // ── Hybrid Key Pool (0-RTT optimization) ─────────────────
+  // Generates N hybrid ML-KEM-768 + X25519 keypairs in a single call.
+  // Ported from native-core/net/pqc/pqc_key_manager.h.
+
+  hybridKeygenPool(count = 5) {
+    if (!_ready) throw new Error('PQCEngine not initialized');
+    const t0 = performance.now();
+    const keypairs = _addon.hybridKeygenPool(count);
+    const ms = Math.round(performance.now() - t0);
+    return {
+      keypairs: keypairs.map((kp) => ({
+        keyId: kp.keyId,
+        kemPublicKey: Buffer.from(kp.kemPublicKey).toString('hex'),
+        x25519Public: Buffer.from(kp.x25519Public).toString('hex'),
+        // NOTE: secret keys are NEVER sent over IPC — only public halves are exposed
+        kemPublicKeyBytes: kp.kemPublicKey.length,
+        generatedAt: kp.generatedAt,
+      })),
+      count: keypairs.length,
+      ms,
+    };
+  },
+
+  // ── Hybrid Session Key Derivation ────────────────────────
+  // HKDF-SHA3-256 over x25519_shared || kem_shared.
+  // Ported from native-core/net/ssl/pqc_hybrid_kdf.cc.
+  // Returns only metadata; derived key material stays in C++ and is returned
+  // as a Buffer (used by the session to encrypt data, never over IPC).
+
+  hybridDeriveSessionKey(x25519SharedHex, kemSharedHex) {
+    if (!_ready) throw new Error('PQCEngine not initialized');
+    const x25519Buf = Buffer.from(x25519SharedHex, 'hex');
+    const kemBuf = Buffer.from(kemSharedHex, 'hex');
+    const t0 = performance.now();
+    const result = _addon.hybridDeriveSessionKey(x25519Buf, kemBuf);
+    const ms = Math.round(performance.now() - t0);
+    return {
+      sessionKeyBytes: result.sessionKey.length,
+      ivBytes: result.iv.length,
+      cipherSuite: result.cipherSuite,
+      ms,
+      // sessionKey and iv Buffers are available for local crypto ops
+      // but MUST NOT cross the IPC boundary
+      _sessionKey: result.sessionKey,
+      _iv: result.iv,
+    };
+  },
+
+  // ── liboqs version ────────────────────────────────────────
+  getLiboqsVersion() {
+    if (!_ready || !_addon.getLiboqsVersion) return 'unavailable';
+    return _addon.getLiboqsVersion();
+  },
+
   // ── Session data ─────────────────────────────────────────
   logSession,
-  getSessionLog: () => [...pqcSessionLog],
-  getSessionStats: () => ({
-    total: pqcSessionLog.length,
-    completed: pqcSessionLog.filter((s) => s.status === 'COMPLETED').length,
-    indigenous: pqcSessionLog.filter((s) => s.pki === 'INDIGENOUS').length,
-    failed: pqcSessionLog.filter((s) => s.status === 'FAILED').length,
-  }),
+
+  /**
+   * Get recent sessions from SQLite (preferred) or in-memory fallback.
+   * @param {number} [limit=50]
+   */
+  getSessionLog(limit = 50) {
+    if (_sessionService && _sessionService.ready) {
+      return _sessionService.getRecentSessions(limit);
+    }
+    return [...pqcSessionLog].slice(0, limit);
+  },
+
+  /**
+   * Get aggregate stats from SQLite (preferred) or in-memory fallback.
+   */
+  getSessionStats() {
+    if (_sessionService && _sessionService.ready) {
+      return _sessionService.getStats();
+    }
+    return {
+      total: pqcSessionLog.length,
+      completed: pqcSessionLog.filter((s) => s.status === 'COMPLETED').length,
+      indigenous: pqcSessionLog.filter((s) => s.pki === 'INDIGENOUS').length,
+      failed: pqcSessionLog.filter((s) => s.status === 'FAILED').length,
+      avgHandshakeMs: 0,
+    };
+  },
 };
 
 module.exports = PQCEngine;
