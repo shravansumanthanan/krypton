@@ -221,6 +221,57 @@ class PQCSessionService {
   }
 
   /**
+   * Retrieve the most recent session record for a specific domain.
+   *
+   * @param {string} domain - Target domain (e.g. "example.com")
+   * @returns {Object|null}
+   */
+  getSessionByDomain(domain) {
+    if (!this._ready || !domain) return null;
+    try {
+      if (!this._stmtGetByDomain) {
+        this._stmtGetByDomain = this._db.prepare(`
+          SELECT * FROM pqc_sessions
+          WHERE domain = @domain OR domain = @domain2
+          ORDER BY created_at DESC
+          LIMIT 1
+        `);
+      }
+
+      // Allow exact match or match with www. prefix removed/added just in case
+      let domain2 = domain;
+      if (domain.startsWith('www.')) domain2 = domain.slice(4);
+      else domain2 = 'www.' + domain;
+
+      const r = this._stmtGetByDomain.get({ domain, domain2 });
+      if (!r) return null;
+
+      return {
+        handshakeId: r.handshake_id,
+        sessionId: r.session_id,
+        domain: r.domain || '—',
+        port: r.port,
+        kem: r.kem_algorithm,
+        sig: r.sig_algorithm,
+        cipherSuite: r.cipher_suite,
+        ms: r.handshake_ms,
+        status: r.status,
+        pkiResult: r.pki_result,
+        issuingCa: r.issuing_ca || '—',
+        indigenousVerified: r.indigenous_verified === 1,
+        hybridMode: r.hybrid_mode === 1,
+        tlsVersion: r.tls_version,
+        time: new Date(r.created_at).toISOString().replace('T', ' ').slice(0, 19),
+        ca: r.issuing_ca || '—',
+        pki: r.indigenous_verified ? 'INDIGENOUS' : 'STANDARD',
+      };
+    } catch (err) {
+      console.error('[PQCSessionService] getSessionByDomain error:', err.message);
+      return null;
+    }
+  }
+
+  /**
    * Returns aggregate statistics for the security panel.
    * @returns {{ total, completed, failed, indigenous, avgHandshakeMs }}
    */

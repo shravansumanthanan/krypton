@@ -384,6 +384,25 @@ const PQCEngine = {
   },
 
   /**
+   * Get the most recent session by domain from SQLite (preferred) or in-memory fallback.
+   * @param {string} domain
+   */
+  getSessionByDomain(domain) {
+    if (_sessionService && _sessionService.ready) {
+      return _sessionService.getSessionByDomain(domain);
+    }
+    // Fallback: search the in-memory array
+    const exactMatch = pqcSessionLog.find((s) => s.domain === domain);
+    if (exactMatch) return exactMatch;
+
+    // Attempt relaxed matching
+    let domain2 = domain;
+    if (domain.startsWith('www.')) domain2 = domain.slice(4);
+    else domain2 = 'www.' + domain;
+    return pqcSessionLog.find((s) => s.domain === domain2) || null;
+  },
+
+  /**
    * Get aggregate stats from SQLite (preferred) or in-memory fallback.
    */
   getSessionStats() {

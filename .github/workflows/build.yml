@@ -7,7 +7,30 @@ on:
     branches: [ main ]
 
 jobs:
-  build:
+  quality:
+    name: Lint & Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: electron-app/package-lock.json
+      - name: Install dependencies
+        working-directory: electron-app
+        run: npm ci
+      - name: Run Linter
+        working-directory: electron-app
+        run: npm run lint
+      - name: Security Audit
+        working-directory: electron-app
+        run: npm audit --audit-level=high
+
+  test:
+    name: Build & Test
+    needs: quality
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -27,14 +50,6 @@ jobs:
     - name: Install dependencies
       working-directory: electron-app
       run: npm ci
-
-    - name: Run Linter
-      working-directory: electron-app
-      run: npm run lint
-
-    - name: Security Audit
-      working-directory: electron-app
-      run: npm audit --audit-level=high
 
     - name: Install Linux build dependencies
       if: matrix.os == 'ubuntu-latest'

@@ -669,8 +669,7 @@ ipcMain.handle('get-security-info', async (e, urlStr) => {
     const url = new URL(urlStr);
     if (url.protocol !== 'https:') return { secure: false };
 
-    const sessions = pqcEngine.getSessionLog();
-    const session = sessions.find((s) => s.domain === url.hostname);
+    const session = pqcEngine.getSessionByDomain(url.hostname);
 
     if (session && session.status === 'COMPLETED') {
       return {
@@ -788,6 +787,25 @@ ipcMain.handle('clear-session-data', async () => {
     await ses.clearCache();
     return true;
   } catch {
+    return false;
+  }
+});
+
+// History Export
+ipcMain.handle('export-history', async (e, historyJsonString) => {
+  try {
+    const { filePath } = await dialog.showSaveDialog(mainWindow, {
+      title: 'Export History',
+      defaultPath: 'krypton_history.json',
+      filters: [{ name: 'JSON', extensions: ['json'] }],
+    });
+    if (filePath) {
+      await fs.promises.writeFile(filePath, historyJsonString, 'utf-8');
+      return true;
+    }
+    return false;
+  } catch (err) {
+    log.error('[History] Export failed:', err.message);
     return false;
   }
 });
