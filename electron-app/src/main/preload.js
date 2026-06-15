@@ -29,6 +29,10 @@ contextBridge.exposeInMainWorld('kryptonBrowser', {
   pqcDsaKeygen: () => ipcRenderer.invoke('pqc-dsa-keygen'),
   pqcGetSessions: () => ipcRenderer.invoke('pqc-get-sessions'),
   pqcGetStats: () => ipcRenderer.invoke('pqc-get-stats'),
+  // PQC extended (Phase 2–5 integrations)
+  pqcGetOcspStatus: (domain) => ipcRenderer.invoke('pqc-get-ocsp-status', domain),
+  pqcGetKeyPool: (count) => ipcRenderer.invoke('pqc-get-key-pool', count),
+  pqcGetLiboqsVersion: () => ipcRenderer.invoke('pqc-get-liboqs-version'),
 
   // ── Downloads ──
   getDownloads: () => ipcRenderer.invoke('get-downloads'),
