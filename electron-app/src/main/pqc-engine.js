@@ -4,7 +4,7 @@
 
 'use strict';
 
-const log = require('electron-log');
+/* eslint-disable no-console */
 
 // ── SQLite Session Service (set by main.js after DB init) ─────
 // Falls back to in-memory log when the service isn't ready yet.
@@ -80,11 +80,11 @@ const PQCEngine = {
       _addon = require('../../native/build/Release/krypton_pqc_addon.node');
       _ready = true;
       const version = _addon.getLiboqsVersion ? _addon.getLiboqsVersion() : 'unknown';
-      log.info(
+      console.log(
         `[PQCEngine] Initialised — Native ML-KEM-768 + ML-DSA-65 ready (FIPS 203/204) liboqs=${version}`,
       );
     } catch (e) {
-      log.error('[PQCEngine] Failed to load native addon:', e);
+      console.error('[PQCEngine] Failed to load native addon:', e);
       throw e;
     }
   },
