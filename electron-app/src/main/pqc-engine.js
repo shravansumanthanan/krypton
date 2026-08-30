@@ -81,7 +81,7 @@ const PQCEngine = {
       _ready = true;
       const version = _addon.getLiboqsVersion ? _addon.getLiboqsVersion() : 'unknown';
       console.log(
-        `[PQCEngine] Initialised — Native ML-KEM-768 + ML-DSA-65 ready (FIPS 203/204) liboqs=${version}`,
+        `[PQCEngine] Initialised — Crypto-Agile PQC ready (FIPS 203/204) liboqs=${version} algorithms: ML-KEM-512/768/1024, ML-DSA-44/65/87`,
       );
     } catch (e) {
       console.error('[PQCEngine] Failed to load native addon:', e);
@@ -418,6 +418,76 @@ const PQCEngine = {
       failed: pqcSessionLog.filter((s) => s.status === 'FAILED').length,
       avgHandshakeMs: 0,
     };
+  },
+
+  // ── Crypto-Agile KEM (accepts any supported algorithm string) ────
+  // Supported: 'ML-KEM-512', 'ML-KEM-768', 'ML-KEM-1024'
+  kemKeygenAgile(algorithm = 'ML-KEM-768') {
+    const t0 = performance.now();
+    const result = _addon.kemKeygenAgile(algorithm);
+    const ms = Math.round(performance.now() - t0);
+    return {
+      publicKey: result.publicKey,
+      secretKey: result.secretKey,
+      publicKeyHex: Buffer.from(result.publicKey).toString('hex'),
+      secretKeyHex: Buffer.from(result.secretKey).toString('hex'),
+      publicKeyBytes: result.publicKey.length,
+      secretKeyBytes: result.secretKey.length,
+      algorithm: result.algorithm,
+      ms,
+    };
+  },
+
+  kemEncapsulateAgile(algorithm, publicKey) {
+    const pk =
+      typeof publicKey === 'string' ? Uint8Array.from(Buffer.from(publicKey, 'hex')) : publicKey;
+    const t0 = performance.now();
+    const result = _addon.kemEncapsulateAgile(algorithm, pk);
+    const ms = Math.round(performance.now() - t0);
+    return {
+      cipherText: result.cipherText,
+      sharedSecret: result.sharedSecret,
+      cipherTextHex: Buffer.from(result.cipherText).toString('hex'),
+      sharedSecretHex: Buffer.from(result.sharedSecret).toString('hex'),
+      algorithm: result.algorithm,
+      ms,
+    };
+  },
+
+  kemDecapsulateAgile(algorithm, cipherText, secretKey) {
+    const ct =
+      typeof cipherText === 'string' ? Uint8Array.from(Buffer.from(cipherText, 'hex')) : cipherText;
+    const sk =
+      typeof secretKey === 'string' ? Uint8Array.from(Buffer.from(secretKey, 'hex')) : secretKey;
+    const t0 = performance.now();
+    const sharedSecret = _addon.kemDecapsulateAgile(algorithm, ct, sk);
+    const ms = Math.round(performance.now() - t0);
+    return { sharedSecret, sharedSecretHex: Buffer.from(sharedSecret).toString('hex'), ms };
+  },
+
+  dsaKeygenAgile(algorithm = 'ML-DSA-65') {
+    const t0 = performance.now();
+    const result = _addon.dsaKeygenAgile(algorithm);
+    const ms = Math.round(performance.now() - t0);
+    return {
+      publicKey: result.publicKey,
+      secretKey: result.secretKey,
+      publicKeyHex: Buffer.from(result.publicKey).toString('hex'),
+      secretKeyHex: Buffer.from(result.secretKey).toString('hex'),
+      publicKeyBytes: result.publicKey.length,
+      secretKeyBytes: result.secretKey.length,
+      algorithm: result.algorithm,
+      ms,
+    };
+  },
+
+  getEnabledAlgorithms() {
+    return _addon.getEnabledAlgorithms
+      ? _addon.getEnabledAlgorithms()
+      : {
+          kems: ['ML-KEM-512', 'ML-KEM-768', 'ML-KEM-1024'],
+          dsa: ['ML-DSA-44', 'ML-DSA-65', 'ML-DSA-87'],
+        };
   },
 };
 

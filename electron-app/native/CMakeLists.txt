@@ -9,9 +9,15 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 # 1. Configure liboqs for minimal static build
 set(OQS_USE_OPENSSL OFF CACHE BOOL "Do not use OpenSSL" FORCE)
 set(OQS_DIST_BUILD ON CACHE BOOL "Build for distribution" FORCE)
-set(OQS_ENABLE_KEM_ml_kem_768 ON CACHE BOOL "" FORCE)
-set(OQS_ENABLE_SIG_ml_dsa_65 ON CACHE BOOL "" FORCE)
-set(OQS_MINIMAL_BUILD "KEM_ml_kem_768;SIG_ml_dsa_65" CACHE STRING "" FORCE)
+# KEM algorithms: ML-KEM-512, ML-KEM-768 (default), ML-KEM-1024
+set(OQS_ENABLE_KEM_ml_kem_512  ON CACHE BOOL "" FORCE)
+set(OQS_ENABLE_KEM_ml_kem_768  ON CACHE BOOL "" FORCE)
+set(OQS_ENABLE_KEM_ml_kem_1024 ON CACHE BOOL "" FORCE)
+# DSA algorithms: ML-DSA-44, ML-DSA-65 (default), ML-DSA-87
+set(OQS_ENABLE_SIG_ml_dsa_44   ON CACHE BOOL "" FORCE)
+set(OQS_ENABLE_SIG_ml_dsa_65   ON CACHE BOOL "" FORCE)
+set(OQS_ENABLE_SIG_ml_dsa_87   ON CACHE BOOL "" FORCE)
+set(OQS_MINIMAL_BUILD "KEM_ml_kem_512;KEM_ml_kem_768;KEM_ml_kem_1024;SIG_ml_dsa_44;SIG_ml_dsa_65;SIG_ml_dsa_87" CACHE STRING "" FORCE)
 set(OQS_BUILD_SHARED_LIBS OFF CACHE BOOL "Build static lib" FORCE)
 set(OQS_OPT_TARGET "generic" CACHE STRING "Generic optimizations" FORCE)
 

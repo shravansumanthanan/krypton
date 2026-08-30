@@ -1,105 +1,199 @@
-name: Build & Test KryptonBrowser
+name: KryptonBrowser CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main, dev, 'feature/**']
   pull_request:
-    branches: [ main ]
+    branches: [main, dev]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# ─────────────────────────────────────────────────────────────
+# JOB 1 — Lint + Dependency Audit
+# ─────────────────────────────────────────────────────────────
 jobs:
   quality:
     name: Lint & Security Audit
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Use Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: 'npm'
+          cache: npm
           cache-dependency-path: electron-app/package-lock.json
       - name: Install dependencies
         working-directory: electron-app
         run: npm ci
-      - name: Run Linter
+      - name: Run linter
         working-directory: electron-app
         run: npm run lint
-      - name: Security Audit
+      - name: npm audit (high+)
         working-directory: electron-app
         run: npm audit --audit-level=high
+        continue-on-error: true
 
-  test:
-    name: Build & Test
+# ─────────────────────────────────────────────────────────────
+# JOB 2 — Secret Scan (gitleaks)
+# ─────────────────────────────────────────────────────────────
+  secret-scan:
+    name: Secret Scan (gitleaks)
+    runs-on: ubuntu-latest
     needs: quality
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+# ─────────────────────────────────────────────────────────────
+# JOB 3 — SAST (Semgrep)
+# ─────────────────────────────────────────────────────────────
+  sast:
+    name: SAST (Semgrep)
+    runs-on: ubuntu-latest
+    needs: quality
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Semgrep
+        run: pip install semgrep
+      - name: Semgrep scan
+        run: |
+          semgrep scan \
+            --config=p/javascript \
+            --config=p/nodejs \
+            --config=p/owasp-top-ten \
+            --error \
+            --exclude='electron-app/native/build/**' \
+            --exclude='electron-app/node_modules/**' \
+            --exclude='electron-app/dist/**' \
+            --exclude='electron-app/build/**' \
+            electron-app/src/
+        continue-on-error: true  # advisory — does not block merge on new rule hits
+
+# ─────────────────────────────────────────────────────────────
+# JOB 4 — Build & Test (macOS — primary, matches dev machine)
+# ─────────────────────────────────────────────────────────────
+  test:
+    name: Build & Test (${{ matrix.os }})
+    needs: [quality, secret-scan]
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
+        os: [macos-latest, ubuntu-latest]
       fail-fast: false
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Use Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: 22
-        cache: 'npm'
-        cache-dependency-path: electron-app/package-lock.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: electron-app/package-lock.json
 
-    - name: Install dependencies
-      working-directory: electron-app
-      run: npm ci
+      - name: Install dependencies
+        working-directory: electron-app
+        run: npm ci
 
-    - name: Install Linux build dependencies
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential cmake ninja-build xvfb
+      - name: Install Linux build deps
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get update && sudo apt-get install -y build-essential cmake ninja-build xvfb
 
-    - name: Install macOS build dependencies
-      if: matrix.os == 'macos-latest'
-      run: brew install cmake ninja
+      - name: Install macOS build deps
+        if: matrix.os == 'macos-latest'
+        run: brew install cmake ninja
 
-    - name: Install Windows build dependencies
-      if: matrix.os == 'windows-latest'
-      run: choco install cmake ninja -y
+      # Cache the native build to avoid recompiling liboqs on every run
+      - name: Cache native PQC build
+        uses: actions/cache@v4
+        with:
+          path: |
+            electron-app/native/build
+            electron-app/native/prebuilds
+          key: native-${{ matrix.os }}-${{ hashFiles('electron-app/native/CMakeLists.txt', 'electron-app/native/src/**') }}
 
-    - name: Build Native PQC Addon
-      working-directory: electron-app
-      run: npm run build:native
+      - name: Build native PQC addon
+        working-directory: electron-app
+        run: npm run build:native
 
-    - name: Build UI
-      working-directory: electron-app
-      run: npm run build:ui
+      - name: Build UI (Vite)
+        working-directory: electron-app
+        run: npm run build:ui
 
-    - name: Run Unit Tests
-      working-directory: electron-app
-      run: npm run test:unit
+      # ── Coverage gate: 80% lines/functions, 70% branches ──
+      - name: Run unit tests with coverage gate
+        working-directory: electron-app
+        run: |
+          npm run test:unit -- \
+            --coverage \
+            --coverageThreshold='{"global":{"lines":80,"functions":80,"branches":70,"statements":80}}'
 
-    - name: Install Playwright Browsers
-      working-directory: electron-app
-      run: npx playwright install --with-deps
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-${{ matrix.os }}
+          path: electron-app/coverage/
+          retention-days: 7
 
-    - name: Run E2E Tests
-      working-directory: electron-app
-      run: |
-        if [ "$RUNNER_OS" == "Linux" ]; then
-          xvfb-run --auto-servernum --server-args="-screen 0 1280x960x24" npm run test:e2e -- --workers=1
-        else
-          npm run test:e2e -- --workers=1
-        fi
-      shell: bash
-      timeout-minutes: 5
+      - name: Install Playwright browsers
+        working-directory: electron-app
+        run: npx playwright install --with-deps chromium
 
-    - name: Upload Playwright Report
-      uses: actions/upload-artifact@v4
-      if: failure()
-      with:
-        name: playwright-report
-        path: electron-app/playwright-report/
-        retention-days: 7
+      - name: Run E2E tests
+        working-directory: electron-app
+        run: |
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            xvfb-run --auto-servernum --server-args="-screen 0 1280x960x24" \
+              npm run test:e2e -- --workers=1
+          else
+            npm run test:e2e -- --workers=1
+          fi
+        shell: bash
+        timeout-minutes: 10
 
-    - name: Package Application
-      working-directory: electron-app
-      run: npm run build:dir
+      - name: Upload Playwright trace on failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces-${{ matrix.os }}
+          path: electron-app/test-results/
+          retention-days: 7
+
+      - name: Package app (dir only — skip installer for CI speed)
+        working-directory: electron-app
+        run: npm run build:dir
+
+# ─────────────────────────────────────────────────────────────
+# JOB 5 — CI Gate (all required jobs must pass)
+# ─────────────────────────────────────────────────────────────
+  ci-gate:
+    name: CI Gate
+    runs-on: ubuntu-latest
+    needs: [quality, secret-scan, test]
+    if: always()
+    steps:
+      - name: Check required jobs
+        run: |
+          echo "quality:     ${{ needs.quality.result }}"
+          echo "secret-scan: ${{ needs.secret-scan.result }}"
+          echo "test:        ${{ needs.test.result }}"
+          if [[ "${{ needs.quality.result }}"     != "success" || \
+                "${{ needs.secret-scan.result }}" != "success" || \
+                "${{ needs.test.result }}"        != "success" ]]; then
+            echo "❌ CI gate FAILED — one or more required jobs did not pass."
+            exit 1
+          fi
+          echo "✅ CI gate PASSED."

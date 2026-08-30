@@ -1,26 +1,79 @@
-/* KryptonBrowser — Browser Chrome Styles */
-/* Brave-inspired dark theme with full feature set */
+/* KryptonBrowser — Browser Chrome Styles                          */
+/* Dark-tech: Geist Sans + Geist Mono · Electric-blue + Emerald   */
+/* Design dial: VARIANCE 7 / MOTION 5 / DENSITY 6                 */
+
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&display=swap');
 
 :root {
-  --bg-chrome: #1e2028;
-  --bg-tab-bar: #16181f;
-  --bg-nav: #23262f;
-  --bg-tab: #2a2d38;
-  --bg-tab-active: #2e3140;
-  --bg-url: #16181f;
-  --bg-menu: #292c35;
-  --border: #32363f;
-  --text-primary: #e8eaed;
-  --text-secondary: #9aa0a6;
-  --text-muted: #6b7280;
-  --accent: #fb923c;
-  --accent-blue: #60a5fa;
-  --accent-green: #34d399;
-  --accent-red: #f87171;
-  --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --mono: 'SF Mono', 'Fira Code', monospace;
-  --radius: 8px;
+  /* ── Colour palette ── */
+  /* Backgrounds — true near-black zinc, not slate */
+  --bg-chrome: #0d0f14;
+  --bg-tab-bar: #0a0c10;
+  --bg-nav: #111318;
+  --bg-tab: #181b22;
+  --bg-tab-active: #1c2030;
+  --bg-url: #0d1017;
+  --bg-menu: #15181f;
+  --bg-popup: #13161d;
+
+  /* Borders — single consistent border family */
+  --border: #1f2330;
+  --border-subtle: #161921;
+  --border-focus: rgba(59, 130, 246, 0.5); /* blue-500/50 */
+
+  /* Text */
+  --text-primary: #e2e8f0;
+  --text-secondary: #64748b;
+  --text-muted: #374151;
+
+  /* Accents — ONE accent (electric blue), semantic extras */
+  --accent: #3b82f6; /* blue-500  — primary interactive */
+  --accent-hover: #60a5fa; /* blue-400  — hover / lighter    */
+  --accent-dim: rgba(59, 130, 246, 0.12);
+  --accent-green: #10b981; /* emerald-500 — secure / success */
+  --accent-red: #ef4444; /* red-500    — error / warn      */
+  --accent-amber: #f59e0b; /* amber-500  — caution           */
+
+  /* ── Typography — Geist + Geist Mono ── */
+  --font: 'Geist', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --mono: 'Geist Mono', 'SF Mono', 'Fira Code', ui-monospace, monospace;
+
+  /* ── Shape & motion ── */
+  --radius: 6px;
+  --radius-sm: 3px;
+  --radius-lg: 10px;
+  --radius-pill: 999px;
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+
+  /* ── Layout dimensions ── */
+  --tab-bar-h: 40px;
+  --tab-h: 32px;
+  --tab-min-w: 120px;
+  --tab-max-w: 220px;
+  --nav-bar-gap: 4px;
+  --nav-btn-size: 30px;
+  --url-bar-h: 32px;
+  --url-bar-radius: var(--radius-pill);
+  --status-bar-h: 20px;
+  --sidebar-w: 320px;
+  --panel-w: 360px;
+  --menu-w: 280px;
+  --modal-w: 380px;
+  --macos-inset: 80px;
+  --favicon-size: 14px;
+  --tab-close-size: 14px;
+  --new-tab-btn-size: 26px;
+
+  /* ── Z-index scale ── */
+  --z-base: 0;
+  --z-reader: 150;
+  --z-sidebar: 200;
+  --z-popup: 300;
+  --z-menu: 350;
+  --z-autocomplete: 400;
+  --z-modal: 800;
+  --z-ctx-menu: 1000;
 }
 
 *,
@@ -49,8 +102,8 @@ body {
 .tab-bar {
   display: flex;
   align-items: flex-end;
-  height: 42px;
-  padding: 0 8px 0 80px;
+  height: var(--tab-bar-h);
+  padding: 0 8px 0 var(--macos-inset);
   background: var(--bg-tab-bar);
   -webkit-app-region: drag;
   user-select: none;
@@ -75,9 +128,9 @@ body {
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  min-width: 120px;
-  max-width: 220px;
-  height: 34px;
+  min-width: var(--tab-min-w);
+  max-width: var(--tab-max-w);
+  height: var(--tab-h);
   background: transparent;
   border: none;
   border-radius: 8px 8px 0 0;
@@ -132,8 +185,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
+  width: var(--tab-close-size);
+  height: var(--tab-close-size);
   border: none;
   border-radius: 50%;
   background: transparent;
@@ -157,8 +210,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: var(--new-tab-btn-size);
+  height: var(--new-tab-btn-size);
   border: none;
   border-radius: 50%;
   background: transparent;
@@ -185,7 +238,7 @@ body {
 .nav-bar {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--nav-bar-gap);
   padding: 6px 12px;
   background: var(--bg-nav);
   border-bottom: 1px solid var(--border);
@@ -202,8 +255,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: var(--nav-btn-size);
+  height: var(--nav-btn-size);
   border: none;
   border-radius: 50%;
   background: transparent;
@@ -230,26 +283,28 @@ body {
   font-size: 20px;
 }
 
-/* URL Bar */
+/* URL Bar — pill shape, blue focus glow */
 .url-bar {
   display: flex;
   align-items: center;
   flex: 1;
   gap: 6px;
-  padding: 0 10px;
-  height: 34px;
+  padding: 0 12px;
+  height: var(--url-bar-h);
   background: var(--bg-url);
   border: 1px solid var(--border);
-  border-radius: 20px;
+  border-radius: var(--url-bar-radius);
   margin: 0 8px;
   transition:
-    border-color 0.2s,
-    box-shadow 0.2s;
+    border-color 0.18s var(--ease),
+    box-shadow 0.18s var(--ease);
 }
 
 .url-bar:focus-within {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(251, 146, 60, 0.15);
+  border-color: var(--border-focus);
+  box-shadow:
+    0 0 0 3px var(--accent-dim),
+    inset 0 0 0 1px rgba(59, 130, 246, 0.08);
 }
 
 /* Autocomplete dropdown */
@@ -262,28 +317,29 @@ body {
   overflow-y: auto;
   background: var(--bg-menu);
   border: 1px solid var(--border);
-  border-radius: 0 0 12px 12px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.7);
   z-index: 400;
   margin-top: -1px;
 }
 
 .autocomplete-dropdown::-webkit-scrollbar {
-  width: 6px;
+  width: 4px;
 }
 
 .autocomplete-dropdown::-webkit-scrollbar-thumb {
-  background: #444;
-  border-radius: 3px;
+  background: var(--border);
+  border-radius: 2px;
 }
 
 .ac-section-label {
   padding: 8px 14px 4px;
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.08em;
   color: var(--text-muted);
+  font-family: var(--mono);
 }
 
 .ac-item {
@@ -297,11 +353,11 @@ body {
 
 .ac-item:hover,
 .ac-item.selected {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(59, 130, 246, 0.06);
 }
 
 .ac-item .material-icons-outlined {
-  font-size: 16px;
+  font-size: 15px;
   color: var(--text-muted);
   flex-shrink: 0;
 }
@@ -322,6 +378,7 @@ body {
 .ac-url {
   font-size: 11px;
   color: var(--text-muted);
+  font-family: var(--mono);
   max-width: 200px;
   white-space: nowrap;
   overflow: hidden;
@@ -330,13 +387,15 @@ body {
 
 .ac-item .ac-type {
   font-size: 10px;
+  font-family: var(--mono);
   padding: 1px 6px;
-  border-radius: 3px;
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  background: var(--accent-dim);
+  color: var(--accent);
   flex-shrink: 0;
 }
 
+/* Security indicator — lock icon in URL bar */
 .security-indicator {
   display: flex;
   align-items: center;
@@ -344,9 +403,9 @@ body {
 }
 
 .security-indicator .material-icons-outlined {
-  font-size: 16px;
+  font-size: 15px;
   color: var(--text-muted);
-  transition: color 0.2s;
+  transition: color 0.15s;
 }
 
 .security-indicator.secure .material-icons-outlined {
@@ -357,6 +416,7 @@ body {
   color: var(--accent-red);
 }
 
+/* URL input */
 #url-input {
   flex: 1;
   border: none;
@@ -366,23 +426,28 @@ body {
   font-size: 13px;
   outline: none;
   height: 100%;
+  letter-spacing: 0.01em;
 }
 
 #url-input::placeholder {
   color: var(--text-muted);
 }
 
+/* PQC badge — electric-blue mono pill */
 .pqc-badge {
   display: none;
   align-items: center;
-  padding: 1px 6px;
-  border-radius: 3px;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
+  padding: 2px 7px;
+  border-radius: var(--radius-sm);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-family: var(--mono);
   color: var(--accent);
-  background: rgba(251, 146, 60, 0.12);
-  border: 1px solid rgba(251, 146, 60, 0.25);
+  background: var(--accent-dim);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  transition: all 0.15s;
 }
 
 .pqc-badge.visible {

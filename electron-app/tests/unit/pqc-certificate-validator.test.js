@@ -15,7 +15,9 @@ describe('PQCCertificateValidator', () => {
     // Mock the ping to return true
     jest.spyOn(validator, '_pingOCSPResponder').mockResolvedValue(true);
 
-    const result = await validator.checkOCSP('example.com', { ocspUrls: ['http://ocsp.example.com'] });
+    const result = await validator.checkOCSP('example.com', {
+      ocspUrls: ['http://ocsp.example.com'],
+    });
     expect(result.result).toBe('good');
     expect(result.warning).toBe(false);
     expect(result.message).toContain('partial check');
@@ -25,7 +27,9 @@ describe('PQCCertificateValidator', () => {
     // Mock the ping to return false
     jest.spyOn(validator, '_pingOCSPResponder').mockResolvedValue(false);
 
-    const result = await validator.checkOCSP('example.com', { ocspUrls: ['http://ocsp.example.com'] });
+    const result = await validator.checkOCSP('example.com', {
+      ocspUrls: ['http://ocsp.example.com'],
+    });
     expect(result.result).toBe('unknown');
     expect(result.warning).toBe(true);
     expect(result.message).toContain('unreachable (fail-open)');
@@ -42,7 +46,9 @@ describe('PQCCertificateValidator', () => {
     // Mock the ping to throw
     jest.spyOn(validator, '_pingOCSPResponder').mockRejectedValue(new Error('Network error'));
 
-    const result = await validator.checkOCSP('example.com', { ocspUrls: ['http://ocsp.example.com'] });
+    const result = await validator.checkOCSP('example.com', {
+      ocspUrls: ['http://ocsp.example.com'],
+    });
     expect(result.result).toBe('unknown');
     expect(result.warning).toBe(true);
     expect(result.message).toContain('Network error');

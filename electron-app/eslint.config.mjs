@@ -12,13 +12,34 @@ export default [
       globals: {
         ...globals.node,
         ...globals.browser,
-        DOMPurify: "readonly"
-      }
+        DOMPurify: "readonly",
+      },
     },
     rules: {
-      "no-unused-vars": ["warn", { "caughtErrors": "none" }],
+      "no-unused-vars": ["warn", { caughtErrors: "none" }],
       "no-console": "warn",
-      "no-empty": ["error", { "allowEmptyCatch": true }]
-    }
-  }
+      "no-empty": ["error", { allowEmptyCatch: true }],
+    },
+  },
+  // ── Jest test files ──────────────────────────────────────
+  {
+    files: ["tests/**/*.js", "tests/**/*.test.js"],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+        describe: "readonly",
+        test: "readonly",
+        it: "readonly",
+        expect: "readonly",
+        beforeAll: "readonly",
+        afterAll: "readonly",
+        beforeEach: "readonly",
+        afterEach: "readonly",
+        jest: "readonly",
+      },
+    },
+    rules: {
+      "no-console": "off",
+    },
+  },
 ];

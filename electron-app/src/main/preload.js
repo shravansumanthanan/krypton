@@ -34,6 +34,15 @@ contextBridge.exposeInMainWorld('kryptonBrowser', {
   pqcGetKeyPool: (count) => ipcRenderer.invoke('pqc-get-key-pool', count),
   pqcGetLiboqsVersion: () => ipcRenderer.invoke('pqc-get-liboqs-version'),
 
+  // PQC crypto-agility
+  pqcKeygenAgile: (algorithm) => ipcRenderer.invoke('pqc-keygen-agile', algorithm),
+  pqcEncapsulateAgile: (algorithm, pk) =>
+    ipcRenderer.invoke('pqc-encapsulate-agile', algorithm, pk),
+  pqcDecapsulateAgile: (algorithm, ct, sk) =>
+    ipcRenderer.invoke('pqc-decapsulate-agile', algorithm, ct, sk),
+  pqcDsaKeygenAgile: (algorithm) => ipcRenderer.invoke('pqc-dsa-keygen-agile', algorithm),
+  pqcGetAlgorithms: () => ipcRenderer.invoke('pqc-get-algorithms'),
+
   // ── Downloads ──
   getDownloads: () => ipcRenderer.invoke('get-downloads'),
   openDownload: (p) => ipcRenderer.invoke('open-download', p),
@@ -62,4 +71,20 @@ contextBridge.exposeInMainWorld('kryptonBrowser', {
 
   // ── History ──
   exportHistory: (data) => ipcRenderer.invoke('export-history', data),
+
+  // ── Fingerprint protection ──
+  setFingerprintPolicy: (level) => ipcRenderer.invoke('set-fingerprint-policy', level),
+  getFingerprintPolicy: () => ipcRenderer.invoke('get-fingerprint-policy'),
+
+  // ── Anonymous tokens (ML-DSA-65 blind signatures) ──
+  // Security: only nonce + signature cross IPC. sessionId stays in main process.
+  anonTokenIssue: () => ipcRenderer.invoke('anon-token-issue'),
+  anonTokenRedeem: (nonce, sig) => ipcRenderer.invoke('anon-token-redeem', nonce, sig),
+  anonTokenCount: () => ipcRenderer.invoke('anon-token-count'),
+
+  // ── PQC Benchmark (server-side hrtime.bigint() precision) ──
+  pqcBenchmarkRunAll: (opts) => ipcRenderer.invoke('pqc-benchmark-run-all', opts),
+  pqcBenchmarkRunOne: (alg, runs) => ipcRenderer.invoke('pqc-benchmark-run-one', alg, runs),
+  pqcBenchmarkGetLatest: () => ipcRenderer.invoke('pqc-benchmark-get-latest'),
+  pqcBenchmarkGetHistory: (limit) => ipcRenderer.invoke('pqc-benchmark-get-history', limit),
 });

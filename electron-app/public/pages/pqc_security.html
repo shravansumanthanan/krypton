@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <!-- Copyright 2025 The KryptonBrowser Authors. All rights reserved.
-     Use of this source code is governed by a BSD-style license that can be
-     found in the LICENSE file. -->
+     Use of this source code is governed by a BSD-style license. -->
 <html lang="en">
 
 <head>
@@ -9,11 +8,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PQC Security — KryptonBrowser</title>
   <link rel="stylesheet" href="pqc_security.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Google+Sans:wght@400;500&display=swap"
-    rel="stylesheet">
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
 </head>
 
@@ -65,7 +59,15 @@
         <span class="material-icons-outlined">history</span>
         <span class="sidebar-label">Session History</span>
       </a>
+      <a class="sidebar-item" data-section="tokens">
+        <span class="material-icons-outlined">token</span>
+        <span class="sidebar-label">Anon Tokens</span>
+      </a>
       <div class="sidebar-divider"></div>
+      <a class="sidebar-item" data-section="benchmark">
+        <span class="material-icons-outlined">speed</span>
+        <span class="sidebar-label">Benchmark</span>
+      </a>
       <a class="sidebar-item" data-section="diagnostics">
         <span class="material-icons-outlined">build</span>
         <span class="sidebar-label">Diagnostics</span>
@@ -482,8 +484,184 @@
           <button class="btn btn-filled" id="btn-run-selftest">
             <span class="material-icons-outlined">play_arrow</span>
             Run self-test
+          <button class="btn btn-filled" id="btn-run-selftest">
+            <span class="material-icons-outlined">play_arrow</span>
+            Run self-test
           </button>
           <div class="selftest-output" id="selftest-output"></div>
+        </div>
+      </section>
+
+      <!-- —— ANONYMOUS TOKENS SECTION —— -->
+      <section id="section-tokens" class="section">
+        <h2 class="section-heading">Anonymous Token Wallet</h2>
+        <p class="section-description">
+          ML-DSA-65–backed anonymous access tokens. Each token is a
+          SHA3-256(nonce ‖ sessionId) commitment signed by an ephemeral
+          keypair. Session IDs never cross the IPC boundary.
+        </p>
+
+        <!-- Token stats -->
+        <div class="token-stats-row">
+          <div class="token-stat">
+            <div class="token-stat-val" id="tok-unredeemed">—</div>
+            <div class="token-stat-lbl">Unredeemed</div>
+          </div>
+          <div class="token-stat">
+            <div class="token-stat-val" id="tok-issued">—</div>
+            <div class="token-stat-lbl">Issued this session</div>
+          </div>
+          <div class="token-stat">
+            <div class="token-stat-val" id="tok-redeemed">—</div>
+            <div class="token-stat-lbl">Redeemed (anti-replay)</div>
+          </div>
+        </div>
+
+        <!-- Token actions -->
+        <div class="settings-card">
+          <h3 class="card-heading">Token Operations</h3>
+          <div class="settings-row">
+            <span class="material-icons-outlined row-icon">add_circle_outline</span>
+            <div class="row-text">
+              <div class="row-title">Issue New Token</div>
+              <div class="row-desc">Generate a fresh ML-DSA-65 token commitment for this session</div>
+            </div>
+            <button class="btn btn-filled" id="btn-issue-token">
+              <span class="material-icons-outlined">token</span>
+              Issue
+            </button>
+          </div>
+          <div class="settings-row">
+            <span class="material-icons-outlined row-icon">check_circle_outline</span>
+            <div class="row-text">
+              <div class="row-title">Redeem Last Token</div>
+              <div class="row-desc">Mark the most-recently-issued token as redeemed (anti-replay check)</div>
+            </div>
+            <button class="btn btn-outlined" id="btn-redeem-token">
+              <span class="material-icons-outlined">verified</span>
+              Redeem
+            </button>
+          </div>
+        </div>
+
+        <!-- Token output display -->
+        <div class="settings-card">
+          <h3 class="card-heading">Last Token Output</h3>
+          <div class="detail-row">
+            <span class="detail-label">Algorithm</span>
+            <span class="detail-value mono">ML-DSA-65</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Commitment</span>
+            <span class="detail-value mono" id="tok-commitment" style="word-break:break-all;max-width:400px;text-align:right;">—</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Status</span>
+            <span class="detail-value" id="tok-status">
+              <span class="badge badge-blue">Idle</span>
+            </span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Issued at</span>
+            <span class="detail-value mono" id="tok-time">—</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- —— BENCHMARK SECTION —— -->
+      <section id="section-benchmark" class="section">
+        <h2 class="section-heading">PQC Benchmark</h2>
+        <p class="section-description">
+          Keygen / encapsulate / decapsulate timing for each enabled algorithm.
+          Results represent single-operation median over 10 runs.
+        </p>
+
+        <div class="button-row">
+          <button class="btn btn-filled" id="btn-run-benchmark">
+            <span class="material-icons-outlined">speed</span>
+            Run benchmark
+          </button>
+          <span id="bench-status" style="font-size:12px;color:var(--text-2);align-self:center;"></span>
+        </div>
+
+        <!-- Benchmark result grid — populated by JS -->
+        <div class="benchmark-grid" id="benchmark-grid">
+          <!-- template cards injected by pqc_security.js -->
+          <div class="bench-card">
+            <div class="bench-alg">ML-KEM-512</div>
+            <div class="bench-rows">
+              <div class="bench-row">
+                <span class="bench-op">Keygen</span>
+                <div class="bench-bar-wrap"><div class="bench-bar" id="bbar-512-keygen" style="width:0%"></div></div>
+                <span class="bench-val" id="bval-512-keygen">—</span>
+              </div>
+              <div class="bench-row">
+                <span class="bench-op">Encaps</span>
+                <div class="bench-bar-wrap"><div class="bench-bar" id="bbar-512-encaps" style="width:0%"></div></div>
+                <span class="bench-val" id="bval-512-encaps">—</span>
+              </div>
+              <div class="bench-row">
+                <span class="bench-op">Decaps</span>
+                <div class="bench-bar-wrap"><div class="bench-bar" id="bbar-512-decaps" style="width:0%"></div></div>
+                <span class="bench-val" id="bval-512-decaps">—</span>
+              </div>
+            </div>
+          </div>
+          <div class="bench-card">
+            <div class="bench-alg">ML-KEM-768</div>
+            <div class="bench-rows">
+              <div class="bench-row">
+                <span class="bench-op">Keygen</span>
+                <div class="bench-bar-wrap"><div class="bench-bar" id="bbar-768-keygen" style="width:0%"></div></div>
+                <span class="bench-val" id="bval-768-keygen">—</span>
+              </div>
+              <div class="bench-row">
+                <span class="bench-op">Encaps</span>
+                <div class="bench-bar-wrap"><div class="bench-bar" id="bbar-768-encaps" style="width:0%"></div></div>
+                <span class="bench-val" id="bval-768-encaps">—</span>
+              </div>
+              <div class="bench-row">
+                <span class="bench-op">Decaps</span>
+                <div class="bench-bar-wrap"><div class="bench-bar" id="bbar-768-decaps" style="width:0%"></div></div>
+                <span class="bench-val" id="bval-768-decaps">—</span>
+              </div>
+            </div>
+          </div>
+          <div class="bench-card">
+            <div class="bench-alg">ML-KEM-1024</div>
+            <div class="bench-rows">
+              <div class="bench-row">
+                <span class="bench-op">Keygen</span>
+                <div class="bench-bar-wrap"><div class="bench-bar" id="bbar-1024-keygen" style="width:0%"></div></div>
+                <span class="bench-val" id="bval-1024-keygen">—</span>
+              </div>
+              <div class="bench-row">
+                <span class="bench-op">Encaps</span>
+                <div class="bench-bar-wrap"><div class="bench-bar" id="bbar-1024-encaps" style="width:0%"></div></div>
+                <span class="bench-val" id="bval-1024-encaps">—</span>
+              </div>
+              <div class="bench-row">
+                <span class="bench-op">Decaps</span>
+                <div class="bench-bar-wrap"><div class="bench-bar" id="bbar-1024-decaps" style="width:0%"></div></div>
+                <span class="bench-val" id="bval-1024-decaps">—</span>
+              </div>
+            </div>
+          </div>
+          <div class="bench-card">
+            <div class="bench-alg">ML-DSA-65</div>
+            <div class="bench-rows">
+              <div class="bench-row">
+                <span class="bench-op">Keygen</span>
+                <div class="bench-bar-wrap"><div class="bench-bar" id="bbar-dsa65-keygen" style="width:0%"></div></div>
+                <span class="bench-val" id="bval-dsa65-keygen">—</span>
+              </div>
+              <div class="bench-row">
+                <span class="bench-op">Sign</span>
+                <div class="bench-bar-wrap"><div class="bench-bar" id="bbar-dsa65-sign" style="width:0%"></div></div>
+                <span class="bench-val" id="bval-dsa65-sign">—</span>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 

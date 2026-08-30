@@ -31,6 +31,18 @@ const CREATE_TABLE_SQL = `
   CREATE INDEX IF NOT EXISTS idx_pqc_domain   ON pqc_sessions(domain);
   CREATE INDEX IF NOT EXISTS idx_pqc_created  ON pqc_sessions(created_at DESC);
   CREATE INDEX IF NOT EXISTS idx_pqc_status   ON pqc_sessions(status);
+
+  -- Anonymous access tokens (ML-DSA-65 blind signatures, anti-replay)
+  CREATE TABLE IF NOT EXISTS anon_tokens (
+    nonce      TEXT PRIMARY KEY,
+    signature  TEXT NOT NULL,
+    session_id TEXT NOT NULL,
+    issued_at  TEXT NOT NULL,
+    redeemed   INTEGER DEFAULT 0,
+    redeemed_at INTEGER
+  );
+  CREATE INDEX IF NOT EXISTS idx_token_redeemed ON anon_tokens(redeemed);
+  CREATE INDEX IF NOT EXISTS idx_token_issued   ON anon_tokens(issued_at DESC);
 `;
 
 const INSERT_SESSION_SQL = `
@@ -70,6 +82,26 @@ const PRUNE_OLD_SQL = `
   )
 `;
 
+// ── Anonymous Token SQL ────────────────────────────────────────────────────
+const INSERT_TOKEN_SQL = `
+  INSERT OR IGNORE INTO anon_tokens (nonce, signature, session_id, issued_at, redeemed, redeemed_at)
+  VALUES (@nonce, @signature, @session_id, @issued_at, 0, NULL)
+`;
+
+const REDEEM_TOKEN_SQL = `
+  UPDATE anon_tokens SET redeemed = 1, redeemed_at = @now
+  WHERE nonce = @nonce AND redeemed = 0
+`;
+
+const COUNT_TOKENS_SQL = `
+  SELECT COUNT(*) as count FROM anon_tokens WHERE redeemed = 0
+`;
+
+const PRUNE_TOKENS_SQL = `
+  DELETE FROM anon_tokens
+  WHERE redeemed = 1 AND redeemed_at < @cutoff
+`;
+
 class PQCSessionService {
   /**
    * @param {string} dbPath - Absolute path to the SQLite database file.
@@ -81,6 +113,9 @@ class PQCSessionService {
     this._stmtInsert = null;
     this._stmtGetRecent = null;
     this._stmtGetStats = null;
+    this._stmtInsertToken = null;
+    this._stmtRedeemToken = null;
+    this._stmtCountTokens = null;
     this._ready = false;
   }
 
@@ -110,6 +145,12 @@ class PQCSessionService {
       this._stmtGetRecent = this._db.prepare(GET_RECENT_SQL);
       this._stmtGetStats = this._db.prepare(GET_STATS_SQL);
       this._stmtPrune = this._db.prepare(PRUNE_OLD_SQL);
+
+      // Token statements
+      this._stmtInsertToken = this._db.prepare(INSERT_TOKEN_SQL);
+      this._stmtRedeemToken = this._db.prepare(REDEEM_TOKEN_SQL);
+      this._stmtCountTokens = this._db.prepare(COUNT_TOKENS_SQL);
+      this._stmtPruneTokens = this._db.prepare(PRUNE_TOKENS_SQL);
 
       this._ready = true;
       return true;
@@ -313,6 +354,62 @@ class PQCSessionService {
       const r = (Math.random() * 16) | 0;
       return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
     });
+  }
+
+  // ── Anonymous Token Methods ─────────────────────────────────
+
+  /**
+   * Persist a newly issued anonymous token.
+   * Called by AnonTokenProvider.issueToken() — sessionId is stored here only.
+   * @param {{ nonce: string, signature: string, sessionId: string, issuedAt: string }} token
+   */
+  issueToken({ nonce, signature, sessionId, issuedAt }) {
+    if (!this._ready || !this._stmtInsertToken) return false;
+    try {
+      this._stmtInsertToken.run({
+        nonce,
+        signature,
+        session_id: sessionId,
+        issued_at: issuedAt,
+      });
+      return true;
+    } catch (err) {
+      console.error('[PQCSessionService] issueToken failed:', err.message);
+      return false;
+    }
+  }
+
+  /**
+   * Mark a token as redeemed (anti-replay).
+   * Returns true if the token existed and was not yet redeemed.
+   * @param {string} nonce - hex nonce from the token
+   */
+  redeemToken(nonce) {
+    if (!this._ready || !this._stmtRedeemToken) return false;
+    try {
+      const result = this._stmtRedeemToken.run({
+        nonce,
+        now: Date.now(),
+      });
+      return result.changes === 1; // 0 changes → already redeemed or not found
+    } catch (err) {
+      console.error('[PQCSessionService] redeemToken failed:', err.message);
+      return false;
+    }
+  }
+
+  /**
+   * Count unredeemed tokens in the database.
+   * @returns {number}
+   */
+  getTokenCount() {
+    if (!this._ready || !this._stmtCountTokens) return 0;
+    try {
+      const row = this._stmtCountTokens.get();
+      return row ? row.count : 0;
+    } catch {
+      return 0;
+    }
   }
 }
 

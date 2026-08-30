@@ -2,7 +2,11 @@
 
 'use strict';
 
-const { PQCHandshakeService, HandshakeState, PKIResult } = require('../../src/main/pqc-handshake-service');
+const {
+  PQCHandshakeService,
+  HandshakeState,
+  PKIResult,
+} = require('../../src/main/pqc-handshake-service');
 
 describe('PQCHandshakeService', () => {
   let svc;
@@ -11,7 +15,7 @@ describe('PQCHandshakeService', () => {
   beforeEach(() => {
     mockSessionService = {
       ready: true,
-      recordSession: jest.fn()
+      recordSession: jest.fn(),
     };
     // Pass a mock DB service
     svc = new PQCHandshakeService(mockSessionService, null);
@@ -27,11 +31,11 @@ describe('PQCHandshakeService', () => {
 
   test('onCertVerified(success=true) completes handshake and records session', () => {
     svc.onNavigationStart('example.com');
-    
+
     const record = svc.onCertVerified('example.com', {
       success: true,
       ocspResult: 'good',
-      pqcKem: 'ML-KEM-768'
+      pqcKem: 'ML-KEM-768',
     });
 
     expect(record.status).toBe('COMPLETED');
@@ -43,11 +47,11 @@ describe('PQCHandshakeService', () => {
 
   test('onCertVerified(success=false) fails handshake and records session', () => {
     svc.onNavigationStart('fail.com');
-    
+
     const record = svc.onCertVerified('fail.com', {
       success: false,
       pkiResult: PKIResult.FAILED_INVALID_SIG,
-      reason: 'Bad signature'
+      reason: 'Bad signature',
     });
 
     expect(record.status).toBe('FAILED');
@@ -58,9 +62,9 @@ describe('PQCHandshakeService', () => {
 
   test('onConnectionTerminated() fails handshake and records session', () => {
     svc.onNavigationStart('timeout.com');
-    
+
     svc.onConnectionTerminated('timeout.com', 'ERR_TIMED_OUT');
-    
+
     expect(mockSessionService.recordSession).toHaveBeenCalled();
     const calledWith = mockSessionService.recordSession.mock.calls[0][0];
     expect(calledWith.status).toBe('FAILED');
