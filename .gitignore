@@ -2,3 +2,9 @@ node_modules/
 build/
 dist/
 .DS_Store
+
+# CI / test artifacts
+electron-app/test-results/
+electron-app/playwright-report/
+electron-app/coverage/
+electron-app/tests/e2e/screenshot-*.png
