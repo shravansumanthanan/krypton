@@ -4,6 +4,11 @@
 
 'use strict';
 
+// Ensure window.kryptonBrowser is accessible whether embedded or top-level
+if (!window.kryptonBrowser && typeof window.parent !== 'undefined' && window.parent.kryptonBrowser) {
+  window.kryptonBrowser = window.parent.kryptonBrowser;
+}
+
 // ═══ Sidebar Navigation ═══
 document.querySelectorAll('.sidebar-item').forEach(item => {
   item.addEventListener('click', () => navigateToSection(item.dataset.section));

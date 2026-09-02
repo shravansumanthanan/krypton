@@ -47,7 +47,9 @@ export function initStatusBar() {
       try {
         const stats = await window.kryptonBrowser.getBlockingStats();
         if (statusBlocked) {
-          statusBlocked.textContent = `${stats.trackersBlocked} trackers blocked`;
+          const count =
+            stats.trackersBlockedCount ?? stats.trackersBlocked ?? stats.blockedRequestCount ?? 0;
+          statusBlocked.textContent = `${count} trackers blocked`;
         }
       } catch (e) {
         /* ignore */

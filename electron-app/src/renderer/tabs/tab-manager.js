@@ -11,6 +11,7 @@ import { createNewTabPage } from '../pages/ntp.js';
 import { createHistoryPage } from '../pages/history-page.js';
 import { createSettingsPage } from '../pages/settings-page.js';
 import { createExtensionsInAppPage } from '../pages/extensions-page.js';
+import { createPqcSecurityPage } from '../pages/pqc-security-page.js';
 import { createWebview, navigateInternalPage } from '../webview/webview-factory.js';
 import { showTabContextMenu, reorderTabs } from './tab-context-menu.js';
 import { updateNavButtons } from '../navigation/nav-controller.js';
@@ -25,7 +26,8 @@ export function createTab(url = 'krypton://newtab') {
   const isHistory = url === 'krypton://history';
   const isSettings = url === 'krypton://settings';
   const isExtensions = url === 'krypton://extensions';
-  const isInAppPage = isHistory || isSettings || isExtensions;
+  const isPqcSecurity = url === 'krypton://pqc-security';
+  const isInAppPage = isHistory || isSettings || isExtensions || isPqcSecurity;
 
   // Determine favicon and title
   let faviconIcon = 'language';
@@ -42,8 +44,9 @@ export function createTab(url = 'krypton://newtab') {
   } else if (isExtensions) {
     faviconIcon = 'extension';
     initialTitle = 'Extensions';
-  } else if (url === 'krypton://pqc-security') {
+  } else if (isPqcSecurity) {
     faviconIcon = 'shield';
+    initialTitle = 'PQC Security';
   }
 
   const tabEl = document.createElement('div');
@@ -116,6 +119,9 @@ export function createTab(url = 'krypton://newtab') {
     $webviewContainer.appendChild(inAppPage);
   } else if (isExtensions) {
     inAppPage = createExtensionsInAppPage(id);
+    $webviewContainer.appendChild(inAppPage);
+  } else if (isPqcSecurity) {
+    inAppPage = createPqcSecurityPage(id);
     $webviewContainer.appendChild(inAppPage);
   } else if (!isInAppPage) {
     webview = createWebview(id, url);

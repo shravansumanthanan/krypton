@@ -25,7 +25,8 @@ export function navigateActiveTab(input) {
     if (
       url === 'krypton://history' ||
       url === 'krypton://settings' ||
-      url === 'krypton://extensions'
+      url === 'krypton://extensions' ||
+      url === 'krypton://pqc-security'
     ) {
       createTab(url);
       return;
