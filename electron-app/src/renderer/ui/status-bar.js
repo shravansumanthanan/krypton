@@ -4,21 +4,38 @@ import {
   shieldTotalBlocked,
   setShieldTotalBlocked,
 } from '../state/store.js';
+import { getActiveTab } from '../tabs/tab-manager.js';
 import { showSettingsToast } from '../pages/settings-page.js';
 
 // ═══ Shield Badge Refresh ═══
 export function refreshShieldCount() {
   if (!window.kryptonBrowser) return;
-  window.kryptonBrowser
-    .getBlockingStats()
-    .then((stats) => {
-      if (!stats) return;
-      setShieldTotalBlocked(stats.blockedRequests || 0);
-      $shieldCount.textContent = shieldTotalBlocked;
-      if (shieldTotalBlocked > 0) $shieldBadgeWrap.classList.add('blocked-active');
+  const tab = typeof getActiveTab === 'function' ? getActiveTab() : null;
+  const pageUrl = tab && tab.url && !tab.url.startsWith('krypton://') ? tab.url : null;
+
+  Promise.all([
+    window.kryptonBrowser.getBlockingStats
+      ? window.kryptonBrowser.getBlockingStats().catch(() => ({}))
+      : Promise.resolve({}),
+    pageUrl && window.kryptonBrowser.getSiteBlockCount
+      ? window.kryptonBrowser.getSiteBlockCount(pageUrl).catch(() => null)
+      : Promise.resolve(null),
+  ])
+    .then(([stats, siteStats]) => {
+      const siteCount = siteStats ? siteStats.total || 0 : null;
+      const globalCount =
+        stats?.blockedRequestCount ?? stats?.blockedRequests ?? stats?.trackersBlockedCount ?? 0;
+      const count = siteCount !== null && siteCount !== undefined ? siteCount : globalCount;
+
+      setShieldTotalBlocked(count);
+      const sc = document.getElementById('shield-count') || $shieldCount;
+      const wrap = document.getElementById('shield-badge-wrap') || $shieldBadgeWrap;
+      if (sc) sc.textContent = count;
+      if (wrap) wrap.classList.toggle('blocked-active', count > 0);
+
       // Update security popup blocked count
       const $popupBlocked = document.getElementById('popup-blocked');
-      if ($popupBlocked) $popupBlocked.textContent = shieldTotalBlocked + ' trackers';
+      if ($popupBlocked) $popupBlocked.textContent = count + ' trackers';
     })
     .catch(() => {});
 }
@@ -58,4 +75,11 @@ export function initStatusBar() {
   }
   updateStatusBar();
   setInterval(updateStatusBar, 5000);
+
+  if (window.kryptonBrowser?.onShieldBlockedUpdate) {
+    window.kryptonBrowser.onShieldBlockedUpdate(() => {
+      refreshShieldCount();
+      updateStatusBar();
+    });
+  }
 }

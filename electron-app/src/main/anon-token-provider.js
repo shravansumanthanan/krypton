@@ -31,6 +31,15 @@ let _ready = false;
 
 // SQLite session service (injected, provides token table methods)
 let _sessionService = null;
+const _inMemoryTokens = new Map();
+
+function hashCommitment(nonce, sessionId) {
+  try {
+    return crypto.createHash('sha3-256').update(nonce).update(sessionId).digest();
+  } catch {
+    return crypto.createHash('sha256').update(nonce).update(sessionId).digest();
+  }
+}
 
 const AnonTokenProvider = {
   /**
@@ -72,8 +81,8 @@ const AnonTokenProvider = {
       // Generate random 32-byte nonce
       const nonce = crypto.randomBytes(32);
 
-      // Commitment = SHA3-256(nonce || sessionId)
-      const commitment = crypto.createHash('sha3-256').update(nonce).update(sessionId).digest();
+      // Commitment = SHA3-256(nonce || sessionId) (or SHA-256 fallback in BoringSSL)
+      const commitment = hashCommitment(nonce, sessionId);
 
       // Sign the commitment with ML-DSA-65
       const { signature } = _pqcEngine.dsaSign(commitment, _signingSecretKey);
@@ -81,6 +90,15 @@ const AnonTokenProvider = {
       const nonceHex = nonce.toString('hex');
       const sigHex = Buffer.from(signature).toString('hex');
       const issuedAt = new Date().toISOString();
+
+      // Persist to memory as safe fallback
+      _inMemoryTokens.set(nonceHex, {
+        nonce: nonceHex,
+        signature: sigHex,
+        sessionId,
+        issuedAt,
+        redeemed: false,
+      });
 
       // Persist to DB if session service is available
       if (_sessionService && _sessionService.ready && _sessionService.issueToken) {
@@ -116,20 +134,24 @@ const AnonTokenProvider = {
       const sigBytes = Buffer.from(signature, 'hex');
 
       // Recompute commitment
-      const commitment = crypto
-        .createHash('sha3-256')
-        .update(nonceBytes)
-        .update(sessionId)
-        .digest();
+      const commitment = hashCommitment(nonceBytes, sessionId);
 
       // Verify ML-DSA-65 signature
       const { valid } = _pqcEngine.dsaVerify(commitment, _signingPublicKey, sigBytes);
       if (!valid) return { valid: false, error: 'Signature verification failed' };
 
+      if (_inMemoryTokens.has(nonce)) {
+        const memToken = _inMemoryTokens.get(nonce);
+        if (memToken.redeemed)
+          return { valid: false, error: 'Token already redeemed or not found' };
+        memToken.redeemed = true;
+      }
+
       // Anti-replay: mark redeemed in DB
       if (_sessionService && _sessionService.ready && _sessionService.redeemToken) {
         const redeemed = _sessionService.redeemToken(nonce);
-        if (!redeemed) return { valid: false, error: 'Token already redeemed or not found' };
+        if (!redeemed && !_inMemoryTokens.has(nonce))
+          return { valid: false, error: 'Token already redeemed or not found' };
       }
 
       return { valid: true };
@@ -142,10 +164,15 @@ const AnonTokenProvider = {
    * Count unredeemed tokens (for UI display).
    */
   getTokenCount() {
-    if (!_sessionService || !_sessionService.ready || !_sessionService.getTokenCount) {
-      return 0;
+    if (_sessionService && _sessionService.ready && _sessionService.getTokenCount) {
+      const dbCount = _sessionService.getTokenCount();
+      if (dbCount > 0) return dbCount;
     }
-    return _sessionService.getTokenCount();
+    let memCount = 0;
+    for (const [, t] of _inMemoryTokens.entries()) {
+      if (!t.redeemed) memCount++;
+    }
+    return memCount;
   },
 };
 

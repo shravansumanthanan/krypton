@@ -3,7 +3,7 @@
 const fingerprintEnforcer = require('../fingerprint-enforcer');
 
 module.exports = function registerSecurityHandlers(ipcMain, services) {
-  const { pqcHandshakeService, pqcCertValidator, pqcEngine } = services;
+  const { pqcHandshakeService, pqcCertValidator, pqcEngine, verifiedCertificatesGetter } = services;
 
   // Certificate info
   ipcMain.handle('get-certificate-info', async (e, url) => {
@@ -59,29 +59,75 @@ module.exports = function registerSecurityHandlers(ipcMain, services) {
 
   ipcMain.handle('get-security-info', async (e, urlStr) => {
     try {
-      const url = new URL(urlStr);
-      if (url.protocol !== 'https:') return { secure: false };
-
-      const session = pqcEngine.getSessionByDomain(url.hostname);
-
-      if (session && session.status === 'COMPLETED') {
+      if (!urlStr) {
         return {
-          secure: true,
-          pqcActive: true,
-          protocol: 'TLS 1.3',
-          kem: session.kem,
-          cipher: 'AES-256-GCM',
-          sig: session.sig,
+          secure: false,
+          domain: '—',
+          status: 'Not connected',
+          protocol: '—',
+          kem: '—',
+          cipher: '—',
+          sig: '—',
+          ca: '—',
+          pki: '—',
+          ms: null,
+        };
+      }
+      const url = new URL(urlStr);
+      if (url.protocol !== 'https:') {
+        return {
+          secure: false,
+          domain: url.hostname,
+          status: 'Insecure',
+          protocol: 'HTTP',
+          kem: '—',
+          cipher: '—',
+          sig: '—',
+          ca: '—',
+          pki: '—',
+          ms: null,
         };
       }
 
+      const hostname = url.hostname.toLowerCase();
+      const session = pqcEngine.getSessionByDomain(hostname);
+      const certMap = verifiedCertificatesGetter ? verifiedCertificatesGetter() : null;
+      const certInfo = certMap
+        ? certMap.get(hostname) ||
+          certMap.get(hostname.replace(/^www\./, '')) ||
+          certMap.get('www.' + hostname)
+        : null;
+
+      if (session && session.status === 'COMPLETED') {
+        const ca = session.ca || session.issuingCa || (certInfo ? certInfo.issuer : null) || '—';
+        return {
+          secure: true,
+          pqcActive: true,
+          protocol: session.tlsVersion || 'TLS 1.3',
+          kem: session.kem || '—',
+          cipher: session.cipherSuite || '—',
+          sig: session.sig || '—',
+          ca,
+          pki: session.indigenousVerified ? 'Verified' : 'Standard',
+          ms: session.ms != null ? session.ms : null,
+          domain: url.hostname,
+          status: 'SECURE_TUNNEL',
+        };
+      }
+
+      const ca = certInfo && certInfo.issuer ? certInfo.issuer : '—';
       return {
         secure: true,
         pqcActive: false,
-        protocol: 'TLS 1.2/1.3',
-        kem: 'Standard (ECDHE/RSA)',
-        cipher: 'Standard',
-        sig: 'Standard',
+        protocol: 'TLS 1.3',
+        kem: '—',
+        cipher: '—',
+        sig: '—',
+        ca,
+        pki: 'Standard',
+        ms: null,
+        domain: url.hostname,
+        status: 'Connected',
       };
     } catch (err) {
       return { error: err.message };
@@ -98,16 +144,15 @@ module.exports = function registerSecurityHandlers(ipcMain, services) {
    * Security note: only the policy string crosses IPC — no key material.
    */
   ipcMain.handle('set-fingerprint-policy', async (e, level) => {
-    if (typeof level !== 'string') return { ok: false, error: 'Invalid level type' };
+    if (typeof level !== 'string') return false;
     const ok = fingerprintEnforcer.setPolicy(level);
-    if (!ok) return { ok: false, error: `Unknown policy level: ${level}` };
-    return { ok: true, level: fingerprintEnforcer.getPolicy() };
+    return Boolean(ok);
   });
 
   /**
    * get-fingerprint-policy — returns the active fingerprint mitigation level.
    */
   ipcMain.handle('get-fingerprint-policy', async () => {
-    return { level: fingerprintEnforcer.getPolicy() };
+    return fingerprintEnforcer.getPolicy();
   });
 };

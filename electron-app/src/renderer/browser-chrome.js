@@ -927,7 +927,7 @@ function createHistoryPage(tabId) {
 
 // ═══ Settings Page ═══
 const ACCENT_COLORS = [
-  { name: 'Orange', value: '#fb923c' },
+  { name: 'Electric Blue', value: '#3b82f6' },
   { name: 'Blue', value: '#60a5fa' },
   { name: 'Purple', value: '#a78bfa' },
   { name: 'Green', value: '#34d399' },
@@ -965,7 +965,7 @@ function showSettingsToast(msg) {
 }
 
 function applyAccentColor() {
-  const color = localStorage.getItem('krypton_accent_color') || '#fb923c';
+  const color = localStorage.getItem('krypton_accent_color') || '#3b82f6';
   document.documentElement.style.setProperty('--accent', color);
 }
 
@@ -1007,7 +1007,7 @@ function createSettingsPage(tabId) {
   const searchEngine = localStorage.getItem('krypton_search_engine') || 'google';
   const showBookmarks = localStorage.getItem('krypton_show_bookmarks') !== 'false';
   const showWallpaper = localStorage.getItem('krypton_show_wallpaper') !== 'false';
-  const accentColor = localStorage.getItem('krypton_accent_color') || '#fb923c';
+  const accentColor = localStorage.getItem('krypton_accent_color') || '#3b82f6';
   const fontSize = localStorage.getItem('krypton_font_size') || 'medium';
   const blockCookies = localStorage.getItem('krypton_block_cookies') === 'true';
   const sendDNT = localStorage.getItem('krypton_send_dnt') === 'true';
@@ -1903,16 +1903,43 @@ document.addEventListener('keydown', (e) => {
 });
 
 // ═══ Sidebar ═══
-const $sidebar = document.getElementById('sidebar');
+function getSidebarEl() {
+  return (
+    document.getElementById('sidebar-panel') ||
+    document.querySelector('.sidebar-panel') ||
+    document.getElementById('sidebar')
+  );
+}
 
 function toggleSidebar() {
+  const sb = getSidebarEl();
   sidebarOpen = !sidebarOpen;
-  $sidebar.style.display = sidebarOpen ? 'flex' : 'none';
+  if (sb) {
+    sb.style.display = sidebarOpen ? 'flex' : 'none';
+    sb.classList.toggle('open', sidebarOpen);
+    sb.classList.toggle('active', sidebarOpen);
+  }
   document.body.classList.toggle('sidebar-open', sidebarOpen);
   if (sidebarOpen) {
     refreshSidebarContent();
   }
 }
+
+document.addEventListener('click', (e) => {
+  const closeBtn = e.target.closest(
+    '#sidebar-close, .sidebar-close, [data-action="close-sidebar"]',
+  );
+  if (closeBtn) {
+    e.stopPropagation();
+    sidebarOpen = false;
+    const sb = getSidebarEl();
+    if (sb) {
+      sb.style.display = 'none';
+      sb.classList.remove('open', 'active');
+    }
+    document.body.classList.remove('sidebar-open');
+  }
+});
 
 function refreshSidebarContent() {
   renderSidebarBookmarks();

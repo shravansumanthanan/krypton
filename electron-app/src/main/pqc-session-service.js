@@ -102,6 +102,20 @@ const PRUNE_TOKENS_SQL = `
   WHERE redeemed = 1 AND redeemed_at < @cutoff
 `;
 
+const crypto = require('crypto');
+// Random salt for this run to anonymize domains (ephemerality)
+const DOMAIN_SALT = crypto.randomBytes(32).toString('hex');
+
+function hashDomain(domain) {
+  if (!domain) return null;
+  const d = domain.toLowerCase().startsWith('www.') ? domain.slice(4) : domain;
+  return crypto
+    .createHash('sha256')
+    .update(d.toLowerCase() + DOMAIN_SALT)
+    .digest('hex')
+    .substring(0, 16);
+}
+
 class PQCSessionService {
   /**
    * @param {string} dbPath - Absolute path to the SQLite database file.
@@ -192,7 +206,7 @@ class PQCSessionService {
       this._stmtInsert.run({
         handshake_id: record.handshakeId || this._uuid(),
         session_id: record.sessionId || 'unknown',
-        domain: record.domain || null,
+        domain: hashDomain(record.domain) || null,
         port: record.port ?? 443,
         kem_algorithm: record.kemAlgorithm || 'ML-KEM-768',
         sig_algorithm: record.sigAlgorithm || 'ML-DSA-65',
@@ -271,18 +285,14 @@ class PQCSessionService {
       if (!this._stmtGetByDomain) {
         this._stmtGetByDomain = this._db.prepare(`
           SELECT * FROM pqc_sessions
-          WHERE domain = @domain OR domain = @domain2
+          WHERE domain = @hashedDomain
           ORDER BY created_at DESC
           LIMIT 1
         `);
       }
 
-      // Allow exact match or match with www. prefix removed/added just in case
-      let domain2 = domain;
-      if (domain.startsWith('www.')) domain2 = domain.slice(4);
-      else domain2 = 'www.' + domain;
-
-      const r = this._stmtGetByDomain.get({ domain, domain2 });
+      const hashedDomain = hashDomain(domain);
+      const r = this._stmtGetByDomain.get({ hashedDomain });
       if (!r) return null;
 
       return {

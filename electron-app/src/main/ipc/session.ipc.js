@@ -3,9 +3,6 @@ const { session } = require('electron');
 const fs = require('fs');
 const log = require('electron-log');
 const { getConfigSync, setConfigSync } = require('../config/allowed-keys');
-const { triggerPanic } = require('../main'); // Not accessible directly like this if triggerPanic isn't exported. Let's see how triggerPanic is implemented. I should probably get it from somewhere or move it.
-// Oh wait, `set-panic-shortcut` needs to register `triggerPanic`. I'll have to export `triggerPanic` from `main.js` or define it inside the handler, or pass it via services. The prompt says "triggerPanic() function" must be kept in main.js, so I need to pass it via services or something? Wait, the prompt says "triggerPanic() function" DO NOT move. So I will add it to the services object in main.js. Let's check what services are passed:
-// The prompt says: "The services object shape you used in `registerAllHandlers` call". So I will add `triggerPanic` to the services object.
 
 module.exports = function registerSessionHandlers(ipcMain, services) {
   const {
@@ -41,26 +38,6 @@ module.exports = function registerSessionHandlers(ipcMain, services) {
       await ses.clearCache();
       return true;
     } catch {
-      return false;
-    }
-  });
-
-  // History Export
-  ipcMain.handle('export-history', async (e, historyJsonString) => {
-    try {
-      const mainWindow = mainWindowGetter();
-      const { filePath } = await dialog.showSaveDialog(mainWindow, {
-        title: 'Export History',
-        defaultPath: 'krypton_history.json',
-        filters: [{ name: 'JSON', extensions: ['json'] }],
-      });
-      if (filePath) {
-        await fs.promises.writeFile(filePath, historyJsonString, 'utf-8');
-        return true;
-      }
-      return false;
-    } catch (err) {
-      log.error('[History] Export failed:', err.message);
       return false;
     }
   });

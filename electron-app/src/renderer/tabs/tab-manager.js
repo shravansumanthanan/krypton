@@ -8,7 +8,6 @@ import {
   $urlInput,
 } from '../state/store.js';
 import { createNewTabPage } from '../pages/ntp.js';
-import { createHistoryPage } from '../pages/history-page.js';
 import { createSettingsPage } from '../pages/settings-page.js';
 import { createExtensionsInAppPage } from '../pages/extensions-page.js';
 import { createPqcSecurityPage } from '../pages/pqc-security-page.js';
@@ -23,11 +22,10 @@ export function createTab(url = 'krypton://newtab') {
   const id = 'tab-' + incrementTabCounter();
   const isInternal = url.startsWith('krypton://');
   const isNewTab = url === 'krypton://newtab';
-  const isHistory = url === 'krypton://history';
   const isSettings = url === 'krypton://settings';
   const isExtensions = url === 'krypton://extensions';
   const isPqcSecurity = url === 'krypton://pqc-security';
-  const isInAppPage = isHistory || isSettings || isExtensions || isPqcSecurity;
+  const isInAppPage = isSettings || isExtensions || isPqcSecurity;
 
   // Determine favicon and title
   let faviconIcon = 'language';
@@ -35,9 +33,6 @@ export function createTab(url = 'krypton://newtab') {
   if (isNewTab) {
     faviconIcon = 'security';
     initialTitle = 'New Tab';
-  } else if (isHistory) {
-    faviconIcon = 'history';
-    initialTitle = 'History';
   } else if (isSettings) {
     faviconIcon = 'settings';
     initialTitle = 'Settings';
@@ -111,9 +106,6 @@ export function createTab(url = 'krypton://newtab') {
   if (isNewTab) {
     newTabPage = createNewTabPage(id);
     $webviewContainer.appendChild(newTabPage);
-  } else if (isHistory) {
-    inAppPage = createHistoryPage(id);
-    $webviewContainer.appendChild(inAppPage);
   } else if (isSettings) {
     inAppPage = createSettingsPage(id);
     $webviewContainer.appendChild(inAppPage);
@@ -159,11 +151,6 @@ export function activateTab(id) {
   tab.tabEl.classList.add('active');
   showActiveContent(tab);
 
-  // Auto-refresh history page when switching back to it
-  if (tab.isInAppPage && tab.inAppPage && tab.inAppPage._refreshHistory) {
-    tab.inAppPage._refreshHistory();
-  }
-
   if (tab.isNewTab) {
     $urlInput.value = '';
     updateSecurityIndicator('');
@@ -181,11 +168,24 @@ export function activateTab(id) {
 }
 
 export function showActiveContent(tab) {
-  document.querySelectorAll('webview').forEach((wv) => wv.classList.remove('active'));
-  document.querySelectorAll('.new-tab-page').forEach((ntp) => ntp.classList.remove('active'));
-  if (tab.isNewTab && tab.newTabPage) tab.newTabPage.classList.add('active');
-  else if (tab.isInAppPage && tab.inAppPage) tab.inAppPage.classList.add('active');
-  else if (tab.webview) tab.webview.classList.add('active');
+  document.querySelectorAll('webview').forEach((wv) => {
+    wv.classList.remove('active');
+    wv.style.display = 'none';
+  });
+  document.querySelectorAll('.new-tab-page').forEach((ntp) => {
+    ntp.classList.remove('active');
+    ntp.style.display = 'none';
+  });
+  if (tab.isNewTab && tab.newTabPage) {
+    tab.newTabPage.classList.add('active');
+    tab.newTabPage.style.display = 'flex';
+  } else if (tab.isInAppPage && tab.inAppPage) {
+    tab.inAppPage.classList.add('active');
+    tab.inAppPage.style.display = 'flex';
+  } else if (tab.webview) {
+    tab.webview.classList.add('active');
+    tab.webview.style.display = 'flex';
+  }
 }
 
 export function closeTab(id) {

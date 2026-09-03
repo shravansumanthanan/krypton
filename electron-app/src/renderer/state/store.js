@@ -15,7 +15,7 @@ export let shieldTotalBlocked = 0;
 export const downloadItems = {}; // id → info
 
 // Bookmarks stored in memory (persisted to localStorage)
-export let bookmarks = JSON.parse(localStorage.getItem('krypton_bookmarks') || '[]');
+export let bookmarks = [];
 
 // Built-in extensions
 export const extensions = [
@@ -72,7 +72,6 @@ export const extensions = [
 export const INTERNAL_PAGES = {
   'krypton://pqc-security': { title: 'PQC Security', file: 'pages/pqc_security.html' },
   'krypton://newtab': { title: 'New Tab', internal: true },
-  'krypton://history': { title: 'History', internal: true },
   'krypton://settings': { title: 'Settings', internal: true },
   'krypton://extensions': { title: 'Extensions', internal: true },
 };
@@ -106,7 +105,7 @@ export const QUOTES = [
 // NTP Shortcuts — built dynamically from user bookmarks
 
 // Reading list (persisted)
-export let readingList = JSON.parse(localStorage.getItem('krypton_reading_list') || '[]');
+export let readingList = [];
 
 // Sidebar state
 export let sidebarOpen = false;

@@ -257,6 +257,8 @@ body {
   justify-content: center;
   width: var(--nav-btn-size);
   height: var(--nav-btn-size);
+  flex-shrink: 0;
+  overflow: hidden;
   border: none;
   border-radius: 50%;
   background: transparent;
@@ -281,6 +283,8 @@ body {
 
 .nav-btn .material-icons-outlined {
   font-size: 20px;
+  pointer-events: none;
+  user-select: none;
 }
 
 /* URL Bar — pill shape, blue focus glow */
@@ -863,8 +867,9 @@ webview.active {
   overflow: hidden;
 }
 
-.new-tab-page.active {
-  display: flex;
+.new-tab-page.active,
+.pqc-page.active {
+  display: flex !important;
 }
 
 .ntp-wallpaper {
@@ -2612,7 +2617,8 @@ webview.active {
 /* ═══════════════════════════════════════════════
    SIDEBAR (Brave-style)
    ═══════════════════════════════════════════════ */
-.sidebar {
+.sidebar-panel,
+#sidebar-panel {
   position: absolute;
   top: 0;
   right: 0;
@@ -2621,10 +2627,26 @@ webview.active {
   background: var(--bg-menu);
   border-left: 1px solid var(--border);
   z-index: 200;
-  display: flex;
+  display: none;
   flex-direction: row;
   box-shadow: -8px 0 40px rgba(0, 0, 0, 0.35);
   animation: slidePanelIn 0.2s var(--ease);
+}
+
+.sidebar-panel.open,
+.sidebar-panel.active,
+#sidebar-panel.open,
+#sidebar-panel.active {
+  display: flex !important;
+}
+
+.sidebar-close {
+  cursor: pointer;
+}
+
+.sidebar-close *,
+#btn-sidebar * {
+  pointer-events: none;
 }
 
 .sidebar-tabs {

@@ -304,6 +304,7 @@ async function initAlgorithmSelectors() {
 
 // ═══ Anonymous Token Wallet ═══
 let _lastNonce = null;
+let _lastSignature = null;
 let _sessionIssued = 0;
 let _sessionRedeemed = 0;
 
@@ -330,6 +331,7 @@ function initTokenWallet() {
       setTokenStatus('badge-blue', 'Issuing…');
       const result = await window.kryptonBrowser.anonTokenIssue();
       _lastNonce = result.nonce;
+      _lastSignature = result.signature;
       _sessionIssued++;
       document.getElementById('tok-commitment').textContent = result.nonce;
       document.getElementById('tok-time').textContent = new Date(result.issuedAt).toISOString().slice(11, 23);
@@ -341,18 +343,19 @@ function initTokenWallet() {
   });
 
   document.getElementById('btn-redeem-token')?.addEventListener('click', async () => {
-    if (!_lastNonce) { setTokenStatus('badge-amber', 'Issue a token first'); return; }
+    if (!_lastNonce || !_lastSignature) { setTokenStatus('badge-amber', 'Issue a token first'); return; }
     if (!window.kryptonBrowser?.anonTokenRedeem) {
       setTokenStatus('badge-amber', 'IPC unavailable');
       return;
     }
     try {
       setTokenStatus('badge-blue', 'Redeeming…');
-      const ok = await window.kryptonBrowser.anonTokenRedeem(_lastNonce);
+      const ok = await window.kryptonBrowser.anonTokenRedeem(_lastNonce, _lastSignature);
       if (ok) {
         _sessionRedeemed++;
         setTokenStatus('badge-green', 'Redeemed ✓');
         _lastNonce = null;
+        _lastSignature = null;
         document.getElementById('tok-commitment').textContent = '—';
         document.getElementById('tok-time').textContent = '—';
       } else {

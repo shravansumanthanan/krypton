@@ -3,26 +3,131 @@ import { recordHistory, updateHistoryEntry } from '../history/history-manager.js
 import { updateSecurityIndicator } from '../security/security-indicator.js';
 import { updateNavButtons, updateReloadButton, showLoading } from '../navigation/nav-controller.js';
 import { updateBookmarkButton } from '../bookmarks/bookmarks-manager.js';
-import { getTab, getActiveTab, createTab, showActiveContent } from '../tabs/tab-manager.js';
+import { getTab, createTab, showActiveContent } from '../tabs/tab-manager.js';
 import { refreshShieldCount } from '../ui/status-bar.js';
 import { showContextMenu } from '../ui/context-menu.js';
 import { hookFindInPage } from '../ui/find-bar.js';
 import { INTERNAL_PAGES } from '../state/store.js';
+
+function applyAdBlockerAndSkipper(wv, tabId) {
+  window.kryptonBrowser
+    ?.getConfig('krypton_ad_block', 'true')
+    .then((val) => {
+      if (val !== 'false') {
+        wv.insertCSS(
+          `
+          .adsbygoogle, [class*="ad-banner"], [class*="ad_banner"], [id*="google_ads"],
+          [id*="ad-slot"], [class*="ad-container"], [class*="ad-placement"],
+          .ad-placeholder, .advertisement, div[data-ad-unit], div[data-ad-slot],
+          iframe[src*="doubleclick"], iframe[src*="googlesyndication"],
+          .video-ads, .ytp-ad-module, ytd-ad-slot-renderer, ytd-banner-promo-renderer,
+          #player-ads, ytd-in-feed-ad-layout-renderer, ytd-action-companion-ad-renderer,
+          .ytp-ad-overlay-container, ytd-promoted-sparkles-web-renderer, ytd-promoted-video-renderer,
+          ytd-display-ad-renderer, ytd-statement-banner-renderer, ytd-mealbar-promo-renderer,
+          #masthead-ad, .ytd-merch-shelf-renderer, .sparkles-light-cta, .ytp-ad-text,
+          .ytp-ad-preview-container, .ytp-ad-progress, .ytp-ad-progress-list,
+          ytd-rich-item-renderer:has(ytd-ad-slot-renderer),
+          tp-yt-paper-dialog:has(#feedback),
+          ytd-enforcement-message-view-model,
+          .yt-playability-error-supported-renderers {
+            display: none !important;
+            visibility: hidden !important;
+            height: 0 !important;
+            width: 0 !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+          }
+        `,
+        ).catch(() => {});
+
+        // YouTube Ad Skipper
+        const tab = getTab(tabId);
+        const currentUrl = (tab && tab.url) || wv.getAttribute('src') || '';
+        if (/(?:^|\.)youtube\.com|youtube-nocookie\.com/i.test(currentUrl)) {
+          wv.executeJavaScript(
+            `
+            (function() {
+              if (window.__kryptonYtSkipperInstalled) return;
+              window.__kryptonYtSkipperInstalled = true;
+              function skipAds() {
+                const dismiss = document.querySelector('tp-yt-paper-dialog #dismiss-button, ytd-enforcement-message-view-model #dismiss-button, yt-mealbar-promo-renderer #dismiss-button');
+                if (dismiss) { try { dismiss.click(); } catch(e){} }
+                const skipBtns = [
+                  '.ytp-skip-ad-button',
+                  '.ytp-ad-skip-button-modern',
+                  '.ytp-ad-skip-button',
+                  '.ytp-ad-skip-button-slot button',
+                  'button.ytp-ad-skip-button',
+                  'button.ytp-ad-skip-button-modern',
+                  '[class*="ytp-ad-skip-button"]',
+                  '.ytp-ad-overlay-close-button'
+                ];
+                for (const s of skipBtns) {
+                  const b = document.querySelector(s);
+                  if (b) { try { b.click(); } catch(e){} }
+                }
+                const player = document.querySelector('#movie_player, .html5-video-player');
+                if (player && typeof player.skipAd === 'function') {
+                  try { player.skipAd(); } catch(e){}
+                }
+                const isAd = player && (
+                  player.classList.contains('ad-showing') ||
+                  player.classList.contains('ad-interrupting') ||
+                  document.querySelector('.ad-showing, .ad-interrupting, .video-ads .ytp-ad-text') !== null
+                );
+                if (isAd) {
+                  const v = document.querySelector('video.html5-main-video') || document.querySelector('video');
+                  if (v) {
+                    try {
+                      v.muted = true;
+                      v.playbackRate = 16;
+                      if (!isNaN(v.duration) && isFinite(v.duration) && v.duration > 0) {
+                        v.currentTime = v.duration;
+                      }
+                      if (v.paused) v.play().catch(() => {});
+                    } catch(e){}
+                  }
+                }
+              }
+              setInterval(skipAds, 100);
+              const obs = new MutationObserver(skipAds);
+              if (document.body) obs.observe(document.body, { childList: true, subtree: true });
+              window.addEventListener('yt-navigate-finish', skipAds);
+            })();
+          `,
+          ).catch(() => {});
+        }
+      }
+    })
+    .catch(() => {});
+}
 
 export function createWebview(tabId, url) {
   const wv = document.createElement('webview');
   wv.dataset.tabId = tabId;
   wv.setAttribute('src', url);
   wv.setAttribute('autosize', 'on');
-  wv.setAttribute('preload', 'preload-webview.js');
+  wv.setAttribute('partition', 'burner-session');
+  wv.setAttribute('allowpopups', 'true');
+  wv.setAttribute(
+    'webpreferences',
+    'contextIsolation=yes, sandbox=yes, nodeIntegration=no, webSecurity=yes',
+  );
+  const preloadPath = window.kryptonBrowser?.webviewPreloadPath || 'preload-webview.js';
+  wv.setAttribute('preload', preloadPath);
 
   wv.addEventListener('did-start-loading', () => {
     showLoading(true);
     updateReloadButton(true);
   });
+  wv.addEventListener('dom-ready', () => {
+    applyAdBlockerAndSkipper(wv, tabId);
+  });
   wv.addEventListener('did-stop-loading', () => {
     showLoading(false);
     updateReloadButton(false);
+    refreshShieldCount();
+    applyAdBlockerAndSkipper(wv, tabId);
 
     // Apply Extension Stubs
     const extMap = {};
@@ -84,10 +189,14 @@ export function createWebview(tabId, url) {
 
   wv.addEventListener('did-navigate-in-page', (e) => {
     const tab = getTab(tabId);
-    if (tab && tabId === activeTabId) {
+    if (tab) {
       tab.url = e.url;
-      $urlInput.value = e.url;
+      if (tabId === activeTabId) {
+        $urlInput.value = e.url;
+        updateSecurityIndicator(e.url);
+      }
     }
+    applyAdBlockerAndSkipper(wv, tabId);
   });
 
   wv.addEventListener('page-title-updated', (e) => {

@@ -71,7 +71,7 @@ skipIfNoSQLite('PQCSessionService', () => {
     });
     const rows = svc.getRecentSessions(10);
     expect(rows.length).toBe(1);
-    expect(rows[0].domain).toBe('secure.test');
+    expect(rows[0].domain).toMatch(/^[a-f0-9]{16}$/);
     expect(rows[0].ms).toBe(42);
     expect(rows[0].status).toBe('COMPLETED');
   });
@@ -92,8 +92,9 @@ skipIfNoSQLite('PQCSessionService', () => {
       createdAt: 2000,
     });
     const rows = svc.getRecentSessions(10);
-    expect(rows[0].domain).toBe('second.test');
-    expect(rows[1].domain).toBe('first.test');
+    expect(rows[0].domain).toMatch(/^[a-f0-9]{16}$/);
+    expect(rows[1].domain).toMatch(/^[a-f0-9]{16}$/);
+    expect(rows[0].domain).not.toBe(rows[1].domain);
   });
 
   test('getStats() totals are correct', () => {
@@ -141,7 +142,7 @@ skipIfNoSQLite('PQCSessionService', () => {
     });
     const rows = svc.getRecentSessions(10);
     expect(rows.length).toBe(1);
-    expect(rows[0].domain).toBe('updated.test');
+    expect(rows[0].domain).toMatch(/^[a-f0-9]{16}$/);
     expect(rows[0].ms).toBe(20);
   });
 

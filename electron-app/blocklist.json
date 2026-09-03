@@ -3,6 +3,8 @@
   "ads": [
     "doubleclick.net","googlesyndication.com","googleadservices.com","pagead2.googlesyndication.com",
     "adservice.google.com","aclk.com","ads.google.com","adwords.google.com",
+    "googleads.g.doubleclick.net","static.doubleclick.net","pubads.g.doubleclick.net","securepubads.g.doubleclick.net",
+    "adservice.google.de","video-stats.l.google.com",
     "adsrvr.org","adnxs.com","advertising.com","ads-twitter.com",
     "moatads.com","serving-sys.com","smaato.net","yieldmanager.com",
     "amazon-adsystem.com","media.net","contextweb.com","bidswitch.net",
@@ -153,6 +155,15 @@
     "/fingerprint", "/fp.js", "/fpjs",
     "/canvas-fingerprint", "/webgl-fingerprint",
     "/collect.*device", "/device-fingerprint",
-    "/coinhive", "/crypto-loot"
+    "/coinhive", "/crypto-loot",
+    "youtube\\.com/api/stats/ads",
+    "youtube\\.com/pagead/",
+    "youtube\\.com/ptracking",
+    "youtube\\.com/api/stats/qoe\\?.*adformat",
+    "youtube\\.com/youtubei/v1/player/ad_break",
+    "googlevideo\\.com/videoplayback\\?.*[&?]adformat=",
+    "googleads\\.g\\.doubleclick\\.net",
+    "pubads\\.g\\.doubleclick\\.net",
+    "static\\.doubleclick\\.net"
   ]
 }

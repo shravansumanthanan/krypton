@@ -10,7 +10,8 @@ import { navigateActiveTab } from '../navigation/nav-controller.js';
 
 // ═══ Bookmarks ═══
 export function saveBookmarks() {
-  localStorage.setItem('krypton_bookmarks', JSON.stringify(bookmarks));
+  // EPHEMERAL BROWSER: Bookmarks are session-only in memory.
+  // localStorage.setItem('krypton_bookmarks', JSON.stringify(bookmarks));
   renderBookmarksBar();
 }
 
@@ -42,9 +43,9 @@ export function toggleBookmark() {
 
 export function updateBookmarkButton() {
   const tab = getActiveTab();
-  if (!tab || tab.isNewTab || !tab.url) {
-    $bookmarkBtn.classList.remove('bookmarked');
-    $bookmarkIcon.textContent = 'bookmark_border';
+  if (!tab || tab.isNewTab || !tab.url || !$bookmarkBtn) {
+    if ($bookmarkBtn) $bookmarkBtn.classList.remove('bookmarked');
+    if ($bookmarkIcon) $bookmarkIcon.textContent = 'bookmark_border';
     return;
   }
   if (isBookmarked(tab.url)) {
@@ -57,6 +58,7 @@ export function updateBookmarkButton() {
 }
 
 export function renderBookmarksBar() {
+  if (!$bookmarksList) return;
   $bookmarksList.innerHTML = '';
   bookmarks.forEach((bm) => {
     const el = document.createElement('button');

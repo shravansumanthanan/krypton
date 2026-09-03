@@ -12,15 +12,19 @@ export function closeAllPanels() {
 }
 
 // ═══ Shields Panel (Brave-style) ═══
-const $shieldsPanel = document.getElementById('shields-panel');
+function getShieldsPanel() {
+  return document.getElementById('shields-panel');
+}
 
 export function toggleShieldsPanel() {
-  if ($shieldsPanel.style.display === 'none' || !$shieldsPanel.style.display) {
+  const panel = getShieldsPanel();
+  if (!panel) return;
+  if (panel.style.display === 'none' || !panel.style.display) {
     closeAllPanels();
     updateShieldsPanel();
-    $shieldsPanel.style.display = 'block';
+    panel.style.display = 'block';
   } else {
-    $shieldsPanel.style.display = 'none';
+    panel.style.display = 'none';
   }
 }
 
@@ -33,33 +37,49 @@ export async function updateShieldsPanel() {
   if (tab && tab.url && !tab.url.startsWith('krypton://')) {
     try {
       pageUrl = tab.url;
-      $site.textContent = new URL(tab.url).hostname;
+      if ($site) $site.textContent = new URL(tab.url).hostname;
     } catch {
-      $site.textContent = tab.url;
+      if ($site) $site.textContent = tab.url;
     }
   } else {
-    $site.textContent = 'No site loaded';
+    if ($site) $site.textContent = 'No site loaded';
   }
 
   if (!window.kryptonBrowser) return;
 
   // Fetch global + per-site stats in parallel
   const [stats, siteStats] = await Promise.all([
-    window.kryptonBrowser.getBlockingStats().catch(() => ({})),
-    pageUrl
+    window.kryptonBrowser.getBlockingStats
+      ? window.kryptonBrowser.getBlockingStats().catch(() => ({}))
+      : Promise.resolve({}),
+    pageUrl && window.kryptonBrowser.getSiteBlockCount
       ? window.kryptonBrowser.getSiteBlockCount(pageUrl).catch(() => null)
       : Promise.resolve(null),
   ]);
 
+  // Update shields panel summary numbers
+  const trackersEl = document.getElementById('shields-stat-trackers');
+  const httpsEl = document.getElementById('shields-stat-https');
+  const scriptsEl = document.getElementById('shields-stat-scripts');
+  const fpEl = document.getElementById('shields-stat-fp');
+
+  const totalTrackers = siteStats
+    ? siteStats.total || 0
+    : stats?.blockedRequestCount || stats?.blockedRequests || 0;
+
+  if (trackersEl) trackersEl.textContent = totalTrackers;
+  if (httpsEl) httpsEl.textContent = stats?.httpsUpgradedCount || 0;
+  if (scriptsEl) scriptsEl.textContent = siteStats ? siteStats.scripts || 0 : 0;
+  if (fpEl) fpEl.textContent = siteStats ? siteStats.fingerprinting || 0 : 0;
+
   // Update the global count + popup label
   const $popupBlocked = document.getElementById('popup-blocked');
-  const total = stats.blockedRequests || 0;
-  if ($popupBlocked) $popupBlocked.textContent = total + ' trackers';
+  if ($popupBlocked) $popupBlocked.textContent = totalTrackers + ' trackers';
 
   // Build per-site category breakdown
   if ($breakdown) {
     if (!siteStats || siteStats.total === 0) {
-      $breakdown.innerHTML = `<div class="shields-no-data">No trackers detected on this page yet.</div>`;
+      $breakdown.innerHTML = `<div class="shields-no-data" style="padding:12px 0;font-size:12px;color:var(--text-muted);text-align:center;">No trackers detected on this page yet.</div>`;
     } else {
       const cats = [
         { key: 'ads', icon: 'ads_click', label: 'Ads' },
@@ -70,22 +90,25 @@ export async function updateShieldsPanel() {
         { key: 'social', icon: 'share', label: 'Social' },
         { key: 'telemetry', icon: 'analytics', label: 'Telemetry' },
         { key: 'patterns', icon: 'pattern', label: 'URL Patterns' },
+        { key: 'scripts', icon: 'code_off', label: 'Scripts' },
       ];
       const rows = cats
         .filter((c) => siteStats[c.key] > 0)
         .map(
           (c) => `
-                    <div class="shields-breakdown-row">
-                        <span class="material-icons-outlined shields-cat-icon">${c.icon}</span>
-                        <span class="shields-cat-label">${c.label}</span>
-                        <span class="shields-cat-count">${siteStats[c.key]}</span>
-                    </div>`,
+            <div class="shields-breakdown-row" style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;font-size:12px;border-bottom:1px solid rgba(255,255,255,0.05);">
+              <span style="display:flex;align-items:center;gap:6px;color:var(--text-secondary);">
+                <span class="material-icons-outlined" style="font-size:16px;">${c.icon}</span>
+                <span>${c.label}</span>
+              </span>
+              <span style="font-weight:600;color:var(--accent);">${siteStats[c.key]}</span>
+            </div>`,
         )
         .join('');
       $breakdown.innerHTML = `
-                <div class="shields-breakdown-header">Blocked on this page (${siteStats.total} total)</div>
-                ${rows || '<div class="shields-no-data">Breakdown unavailable</div>'}
-            `;
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:8px;font-weight:600;">Blocked on this page (${siteStats.total} total)</div>
+        ${rows || '<div class="shields-no-data" style="padding:8px 0;color:var(--text-muted);font-size:12px;">Breakdown unavailable</div>'}
+      `;
     }
   }
 
@@ -112,9 +135,20 @@ export function wireShieldsControls() {
         window.kryptonBrowser.setConfig('krypton_ad_block', isOn ? 'true' : 'false');
       }
       localStorage.setItem('krypton_ad_block', isOn ? 'true' : 'false');
-      showSettingsToast(
-        isOn ? 'KryptonShield enabled for this site' : 'KryptonShield disabled for this site',
-      );
+      showSettingsToast(isOn ? 'KryptonShield enabled' : 'KryptonShield disabled');
+      // Reload active webview to apply change immediately
+      const tab = getActiveTab();
+      if (tab && tab.webview) tab.webview.reload();
+    });
+  }
+
+  // Auto-refresh shields panel if open when a block occurs
+  if (window.kryptonBrowser?.onShieldBlockedUpdate) {
+    window.kryptonBrowser.onShieldBlockedUpdate(() => {
+      const panel = getShieldsPanel();
+      if (panel && panel.style.display !== 'none') {
+        updateShieldsPanel();
+      }
     });
   }
 
@@ -189,7 +223,8 @@ export function wireShieldsControls() {
   const advBtn = document.getElementById('shields-advanced-btn');
   if (advBtn)
     advBtn.addEventListener('click', () => {
-      $shieldsPanel.style.display = 'none';
+      const panel = getShieldsPanel();
+      if (panel) panel.style.display = 'none';
       createTab('krypton://settings');
     });
 
@@ -197,6 +232,7 @@ export function wireShieldsControls() {
   if (reportBtn)
     reportBtn.addEventListener('click', () => {
       showSettingsToast('Broken site report submitted');
-      $shieldsPanel.style.display = 'none';
+      const panel = getShieldsPanel();
+      if (panel) panel.style.display = 'none';
     });
 }

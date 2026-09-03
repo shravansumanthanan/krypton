@@ -9,6 +9,7 @@ const {
   BrowserWindow,
   ipcMain,
   session,
+  webContents,
   Menu,
   shell,
   dialog,
@@ -131,11 +132,21 @@ const pqcBenchmarkService = require('./pqc-benchmark-service');
 
 // ═══ Enable PQC/ML-KEM in Chromium's TLS stack ═══
 // Chromium 124+ supports ML-KEM-768 for TLS key exchange natively.
-app.commandLine.appendSwitch('enable-features', 'PostQuantumKeyAgreement,UseMLKEM');
+app.commandLine.appendSwitch(
+  'enable-features',
+  'PostQuantumKeyAgreement,UseMLKEM,PlatformHEVCDecoderSupport',
+);
 app.commandLine.appendSwitch('enable-quic');
+app.commandLine.appendSwitch('ignore-gpu-blocklist');
+app.commandLine.appendSwitch('enable-zero-copy');
 // app.commandLine.appendSwitch('site-per-process'); // Causes SIGTRAP with webview
 // Enforce minimum TLS 1.3 to prevent downgrade attacks and ensure PQC can be negotiated
 app.commandLine.appendSwitch('ssl-version-min', 'tls1.3');
+// Hardware video decoding and media playback flags for smooth rendering
+app.commandLine.appendSwitch('enable-accelerated-video-decode');
+app.commandLine.appendSwitch('enable-accelerated-mjpeg-decode');
+app.commandLine.appendSwitch('enable-gpu-rasterization');
+app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
 let mainWindow;
 
@@ -144,6 +155,37 @@ let BLOCK_SET = new Set();
 let BLOCK_PATTERNS = [];
 // Per-category Sets for O(1) classification in recordSiteBlock
 const CATEGORY_SETS = {}; // { ads: Set, trackers: Set, fingerprinting: Set, ... }
+
+// Guaranteed YouTube and Google ad network endpoints
+const YOUTUBE_AD_DOMAINS = new Set([
+  'googleads.g.doubleclick.net',
+  'static.doubleclick.net',
+  'pagead2.googlesyndication.com',
+  'ad.doubleclick.net',
+  'pubads.g.doubleclick.net',
+  'securepubads.g.doubleclick.net',
+  'adservice.google.com',
+  'adservice.google.de',
+  'video-stats.l.google.com',
+  'tpc.googlesyndication.com',
+  's0.2mdn.net',
+  'googleadservices.com',
+]);
+
+const YOUTUBE_AD_PATTERNS = [
+  /youtube\.com\/api\/stats\/ads/i,
+  /youtube\.com\/pagead\//i,
+  /youtube\.com\/ptracking/i,
+  /youtube\.com\/api\/stats\/qoe\?.*adformat/i,
+  /youtube\.com\/youtubei\/v1\/player\/ad_break/i,
+  /googlevideo\.com\/videoplayback\?.*[&?]adformat=/i,
+  /googleads\.g\.doubleclick\.net/i,
+  /pubads\.g\.doubleclick\.net/i,
+  /static\.doubleclick\.net/i,
+  /youtube\.com\/get_midroll_info/i,
+  /youtube\.com\/api\/stats\/playback\?.*adformat/i,
+  /youtube\.com\/api\/stats\/watchtime\?.*adformat/i,
+];
 
 function loadBlocklist() {
   try {
@@ -186,6 +228,13 @@ function loadBlocklist() {
         .filter(Boolean);
     }
 
+    // Ensure all guaranteed YouTube & Google ad domains are in BLOCK_SET & CATEGORY_SETS
+    if (!CATEGORY_SETS['ads']) CATEGORY_SETS['ads'] = new Set();
+    for (const d of YOUTUBE_AD_DOMAINS) {
+      BLOCK_SET.add(d);
+      CATEGORY_SETS['ads'].add(d);
+    }
+
     log.info(
       `[KryptonBrowser] Blocklist loaded: ${BLOCK_SET.size} domains, ${BLOCK_PATTERNS.length} patterns`,
     );
@@ -197,11 +246,13 @@ function loadBlocklist() {
 function isDomainBlocked(url) {
   try {
     const hostname = new URL(url).hostname.toLowerCase();
+    if (YOUTUBE_AD_DOMAINS.has(hostname)) return true;
     if (BLOCK_SET.has(hostname)) return true;
     // Check if any parent domain is in the blocklist (e.g. cdn.doubleclick.net)
     const parts = hostname.split('.');
     for (let i = 1; i < parts.length - 1; i++) {
-      if (BLOCK_SET.has(parts.slice(i).join('.'))) return true;
+      const parent = parts.slice(i).join('.');
+      if (YOUTUBE_AD_DOMAINS.has(parent) || BLOCK_SET.has(parent)) return true;
     }
     return false;
   } catch {
@@ -210,6 +261,7 @@ function isDomainBlocked(url) {
 }
 
 function isPatternBlocked(url) {
+  if (YOUTUBE_AD_PATTERNS.some((p) => p.test(url))) return true;
   return BLOCK_PATTERNS.some((p) => p.test(url));
 }
 
@@ -219,7 +271,10 @@ let trackersBlockedCount = 0;
 let httpsUpgradedCount = 0;
 let pqcSessionCount = 0;
 
-// Per-site block counts — Map<hostname, { total, ads, trackers, fingerprinting, cryptominers, malware, social, telemetry, patterns }>
+// Verified certificates map — Map<hostname, { issuer, subject, validStart, validExpiry }>
+const verifiedCertificates = new Map();
+
+// Per-site block counts — Map<hostname, { total, ads, trackers, fingerprinting, cryptominers, malware, social, telemetry, patterns, scripts }>
 const siteBlockCounts = new Map();
 
 function recordSiteBlock(requestUrl, category) {
@@ -241,6 +296,7 @@ function recordSiteBlock(requestUrl, category) {
         social: 0,
         telemetry: 0,
         patterns: 0,
+        scripts: 0,
       });
     }
     const entry = siteBlockCounts.get(hostname);
@@ -254,7 +310,9 @@ function recordSiteBlock(requestUrl, category) {
 // Classify a blocked URL into its category using pre-built CATEGORY_SETS (O(1))
 function classifyBlockedUrl(url) {
   try {
+    if (YOUTUBE_AD_PATTERNS.some((p) => p.test(url))) return 'ads';
     const h = new URL(url).hostname.toLowerCase();
+    if (YOUTUBE_AD_DOMAINS.has(h)) return 'ads';
     const parts = h.split('.');
     const candidates = [h];
     for (let i = 1; i < parts.length - 1; i++) candidates.push(parts.slice(i).join('.'));
@@ -287,6 +345,7 @@ function createWindow() {
       sandbox: true,
       webSecurity: true,
       enableBlinkFeatures: '',
+      additionalArguments: [`--webview-preload-path=${path.join(__dirname, 'preload-webview.js')}`],
     },
     show: false,
   });
@@ -323,14 +382,51 @@ function createWindow() {
     return { action: 'deny' };
   });
 
-  setupRequestInterception(mainWindow.webContents.session);
+  const burnerSession = session.fromPartition('burner-session');
+  setupRequestInterception(burnerSession);
+  setupRequestInterception(session.defaultSession);
 }
 
+// Ensure any new webContents (including guest webviews) have interception and fingerprint protection
+app.on('web-contents-created', (event, contents) => {
+  if (contents.session) {
+    setupRequestInterception(contents.session);
+  }
+  fingerprintEnforcer.injectIntoWebContents(contents);
+});
+
 // ═══ Request Interception ═══
+const interceptedSessions = new WeakSet();
+
 function setupRequestInterception(ses) {
+  if (!ses || interceptedSessions.has(ses)) return;
+  interceptedSessions.add(ses);
+
+  try {
+    const rawUa = ses.getUserAgent();
+    if (rawUa) {
+      ses.setUserAgent(rawUa.replace(/Electron\/[0-9.]+\s*/i, ''));
+    }
+  } catch {
+    /* ignore */
+  }
+
   // 1. Block ads, trackers, fingerprinting, cryptominers, malware
   ses.webRequest.onBeforeRequest({ urls: ['*://*/*'] }, (details, callback) => {
     const url = details.url;
+    const getPageUrl = () => {
+      try {
+        if (details.webContentsId) {
+          const wc = webContents.fromId(details.webContentsId);
+          if (wc && typeof wc.getURL === 'function' && wc.getURL()) {
+            return wc.getURL();
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+      return details.referrer || url;
+    };
 
     const blockAds = getConfigSync('krypton_ad_block', 'true') === 'true';
     if (blockAds) {
@@ -339,16 +435,36 @@ function setupRequestInterception(ses) {
         trackersBlockedCount++;
         // Classify via O(1) CATEGORY_SETS lookup (populated at startup)
         const cat = classifyBlockedUrl(url);
-        const pageUrl = details.referrer || url;
+        const pageUrl = getPageUrl();
         recordSiteBlock(pageUrl, cat);
         callback({ cancel: true });
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('shield-blocked-update', {
+            url,
+            category: cat,
+            pageUrl,
+            blockedRequestCount,
+            trackersBlockedCount,
+          });
+        }
         return;
       }
       if (isPatternBlocked(url)) {
         blockedRequestCount++;
-        const pageUrl2 = details.referrer || url;
-        recordSiteBlock(pageUrl2, 'patterns');
+        trackersBlockedCount++;
+        const cat = classifyBlockedUrl(url);
+        const pageUrl2 = getPageUrl();
+        recordSiteBlock(pageUrl2, cat);
         callback({ cancel: true });
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('shield-blocked-update', {
+            url,
+            category: cat,
+            pageUrl: pageUrl2,
+            blockedRequestCount,
+            trackersBlockedCount,
+          });
+        }
         return;
       }
     }
@@ -364,7 +480,19 @@ function setupRequestInterception(ses) {
       details.resourceType === 'script' &&
       getConfigSync('krypton_block_scripts', 'false') === 'true'
     ) {
+      blockedRequestCount++;
+      const pageUrl = getPageUrl();
+      recordSiteBlock(pageUrl, 'scripts');
       callback({ cancel: true });
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('shield-blocked-update', {
+          url,
+          category: 'scripts',
+          pageUrl,
+          blockedRequestCount,
+          trackersBlockedCount,
+        });
+      }
       return;
     }
 
@@ -373,17 +501,33 @@ function setupRequestInterception(ses) {
       getConfigSync('krypton_https_upgrade', 'true') === 'true' &&
       url.startsWith('http://') &&
       !url.startsWith('http://localhost') &&
-      !url.startsWith('http://127.')
+      !url.startsWith('http://127.0.0.1')
     ) {
       httpsUpgradedCount++;
-      callback({ redirectURL: url.replace(/^http:\/\//, 'https://') });
+      const secureUrl = url.replace(/^http:\/\//i, 'https://');
+      callback({ redirectURL: secureUrl });
       return;
+    }
+
+    // Block third-party cookies if krypton_block_cookies=strict
+    if (getConfigSync('krypton_block_cookies', 'standard') === 'strict') {
+      const isThirdParty = (reqUrl, ref) => {
+        try {
+          if (!ref) return false;
+          return new URL(reqUrl).hostname !== new URL(ref).hostname;
+        } catch {
+          return false;
+        }
+      };
+      if (isThirdParty(url, details.referrer)) {
+        delete details.requestHeaders?.['Cookie'];
+      }
     }
 
     callback({});
   });
 
-  // 2. Inject DNT / Sec-GPC headers + KryptonBrowser User-Agent suffix
+  // 2. Inject DNT / Sec-GPC headers + clean User-Agent
   ses.webRequest.onBeforeSendHeaders({ urls: ['*://*/*'] }, (details, callback) => {
     const headers = details.requestHeaders;
     if (getConfigSync('krypton_send_dnt', 'true') === 'true') {
@@ -391,10 +535,17 @@ function setupRequestInterception(ses) {
       headers['Sec-GPC'] = '1';
     }
     if (headers['User-Agent']) {
-      headers['User-Agent'] = headers['User-Agent'].replace(
-        /\s*$/,
-        ' KryptonBrowser/1.0 PQC-Enabled',
-      );
+      let ua = headers['User-Agent'].replace(/Electron\/[0-9.]+\s*/i, '');
+      const isGoogleOrMedia =
+        /youtube\.com|googlevideo\.com|google\.com|gstatic\.com|googleapis\.com/i.test(details.url);
+      if (isGoogleOrMedia) {
+        ua = ua
+          .replace(/sterlingsuman\/[0-9.]+\s*/gi, '')
+          .replace(/KryptonBrowser\/[0-9.]+\s*/gi, '');
+      } else {
+        ua = ua.replace(/\s*$/, ' KryptonBrowser/1.0 PQC-Enabled');
+      }
+      headers['User-Agent'] = ua.trim();
     }
     callback({ requestHeaders: headers });
   });
@@ -405,23 +556,23 @@ function setupRequestInterception(ses) {
     delete headers['X-FB-Debug'];
     delete headers['X-Powered-By'];
     headers['X-Content-Type-Options'] = ['nosniff'];
-    headers['X-Frame-Options'] = ['SAMEORIGIN'];
     headers['Referrer-Policy'] = ['strict-origin-when-cross-origin'];
 
-    // Enforce strict CSP for local files (the main UI)
+    // Enforce strict CSP and frame options only for local files (the main UI)
     if (details.url.startsWith('file://')) {
+      headers['X-Frame-Options'] = ['SAMEORIGIN'];
       headers['Content-Security-Policy'] = [
         "default-src 'self'; script-src 'self'; img-src 'self' https: data: blob:; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; connect-src 'self' https:;",
       ];
     }
 
     // Apply fingerprint-enforcer headers (Permissions-Policy, COEP, ETag stripping)
-    fingerprintEnforcer.applyHeaders(headers);
+    fingerprintEnforcer.applyHeaders(headers, details.url);
 
     callback({ responseHeaders: headers });
   });
 
-  // 4. Permission handler — deny sensitive permissions by default
+  // 4. Permission handler — deny sensitive permissions by default, allow media & clipboard
   ses.setPermissionRequestHandler((wc, permission, callback, details) => {
     const denied = [
       'camera',
@@ -444,7 +595,14 @@ function setupRequestInterception(ses) {
       callback(false);
       return;
     }
-    callback(['clipboard-read', 'clipboard-sanitized-write'].includes(permission));
+    const allowed = [
+      'clipboard-read',
+      'clipboard-sanitized-write',
+      'fullscreen',
+      'media',
+      'protected-media-identifier',
+    ];
+    callback(allowed.includes(permission));
   });
 
   // 5. Certificate verification — record PQC sessions + async OCSP
@@ -452,14 +610,26 @@ function setupRequestInterception(ses) {
     if (request.verificationResult === 'net::OK') {
       pqcSessionCount++;
       const domain = request.hostname;
+      const cert = request.certificate;
+      const issuer =
+        cert?.issuerName || cert?.issuer?.commonName || cert?.issuer?.organizationName || '';
+      verifiedCertificates.set(domain.toLowerCase(), {
+        issuer,
+        subject: cert?.subjectName || cert?.subject?.commonName || '',
+        validStart: cert?.validStart,
+        validExpiry: cert?.validExpiry,
+      });
 
       // Drive the handshake state machine (sync part)
-      pqcHandshakeService.onCertVerified(domain, { success: true });
+      pqcHandshakeService.onCertVerified(domain, {
+        success: true,
+        issuingCa: issuer,
+      });
 
       // Async OCSP check runs in the background (fail-open — does not block TLS)
       pqcCertValidator
         .checkOCSP(domain, {
-          issuerName: request.certificate?.issuer?.commonName || '',
+          issuerName: issuer,
           ocspUrls: [],
         })
         .then((ocspResult) => {
@@ -717,12 +887,14 @@ app.whenReady().then(async () => {
     mainWindowGetter: () => mainWindow,
     downloadsMapGetter: () => downloads,
     statsGetter: () => ({
+      blockedRequests: blockedRequestCount,
       blockedRequestCount,
       trackersBlockedCount,
       httpsUpgradedCount,
       pqcSessionCount,
     }),
     siteBlockCountsGetter: () => siteBlockCounts,
+    verifiedCertificatesGetter: () => verifiedCertificates,
     globalShortcut,
     dialog,
     shell,

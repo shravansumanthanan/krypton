@@ -13,10 +13,7 @@
       href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined"
       rel="stylesheet"
     />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap"
-      rel="stylesheet"
-    />
+    <link rel="stylesheet" href="/pages/pqc_security.css" />
   </head>
 
   <body>
@@ -58,9 +55,6 @@
         <div class="pqc-badge" id="pqc-badge" title="PQC quantum-secure connection">
           <span>PQC</span>
         </div>
-        <button class="bookmark-btn" id="btn-bookmark" title="Bookmark this page (⌘D)">
-          <span class="material-icons-outlined" id="bookmark-icon">bookmark_border</span>
-        </button>
       </div>
 
       <!-- Autocomplete dropdown -->
@@ -98,7 +92,7 @@
         </button>
         <!-- Sidebar toggle -->
         <button class="nav-btn" id="btn-sidebar" title="Sidebar (⌘B)">
-          <span class="material-icons-outlined">side_navigation</span>
+          <span class="material-icons-outlined">view_sidebar</span>
         </button>
         <button class="nav-btn" id="btn-menu" title="Menu">
           <span class="material-icons-outlined">menu</span>
@@ -106,14 +100,7 @@
       </div>
     </div>
 
-    <!-- ═══ Bookmarks Bar ═══ -->
-    <div class="bookmarks-bar" id="bookmarks-bar">
-      <div class="bookmarks-list" id="bookmarks-list">
-        <!-- Bookmark items injected by JS -->
-      </div>
-    </div>
-
-    <!-- ═══ Find Bar (hidden by default) ═══ -->
+    <!-- ═══ Find Bar ═══ -->
     <div class="find-bar" id="find-bar" style="display: none">
       <span class="material-icons-outlined find-bar-icon">search</span>
       <input
@@ -251,16 +238,6 @@
             >›</span
           >
         </div>
-        <div class="menu-item" data-action="downloads">
-          <span class="material-icons-outlined">download</span>Downloads<span class="menu-shortcut"
-            >⌥⌘L</span
-          >
-        </div>
-        <div class="menu-item" data-action="extensions">
-          <span class="material-icons-outlined">extension</span>Extensions<span class="menu-chevron"
-            >›</span
-          >
-        </div>
       </div>
       <div class="menu-divider"></div>
       <div class="menu-section">
@@ -337,6 +314,15 @@
           </div>
         </div>
       </div>
+      <div
+        class="shields-breakdown"
+        id="shields-breakdown"
+        style="
+          padding: 12px 16px;
+          background: rgba(0, 0, 0, 0.25);
+          border-bottom: 1px solid var(--border);
+        "
+      ></div>
       <div class="shields-controls">
         <div class="shields-control-row">
           <div class="shields-control-info">
@@ -399,82 +385,47 @@
     </div>
 
     <!-- ═══ Sidebar (Brave-style) ═══ -->
-    <div class="sidebar" id="sidebar" style="display: none">
+    <div
+      class="sidebar-panel sidebar"
+      id="sidebar-panel"
+      data-panel="sidebar-panel"
+      style="display: none"
+    >
       <div class="sidebar-tabs">
-        <button class="sidebar-tab active" data-sidebar-tab="bookmarks" title="Bookmarks">
-          <span class="material-icons-outlined">bookmark</span>
+        <button class="sidebar-tab active" data-sidebar-tab="pqc-assistant" title="PQC Assistant">
+          <span class="material-icons-outlined">security</span>
         </button>
-        <button class="sidebar-tab" data-sidebar-tab="history" title="History">
-          <span class="material-icons-outlined">history</span>
-        </button>
-        <button class="sidebar-tab" data-sidebar-tab="reading-list" title="Reading List">
-          <span class="material-icons-outlined">auto_stories</span>
-        </button>
-        <button class="sidebar-tab" data-sidebar-tab="ai" title="Leo AI">
-          <span class="material-icons-outlined">smart_toy</span>
+        <button class="sidebar-tab" data-sidebar-tab="downloads" title="Downloads">
+          <span class="material-icons-outlined">download</span>
         </button>
       </div>
       <div class="sidebar-content">
-        <div class="sidebar-pane active" data-sidebar-pane="bookmarks">
+        <div class="sidebar-pane active" data-sidebar-pane="pqc-assistant">
           <div class="sidebar-pane-header">
-            <span>Bookmarks</span>
-            <button class="sidebar-pane-action" id="sidebar-add-bookmark" title="Add bookmark">
-              <span class="material-icons-outlined">add</span>
+            <h3>PQC Assistant</h3>
+            <button
+              class="sidebar-pane-action sidebar-close"
+              id="sidebar-close"
+              title="Close Sidebar"
+            >
+              <span class="material-icons-outlined">close</span>
             </button>
-          </div>
-          <div class="sidebar-search">
-            <span class="material-icons-outlined">search</span>
-            <input type="text" id="sidebar-bookmark-search" placeholder="Search bookmarks…" />
-          </div>
-          <div class="sidebar-list" id="sidebar-bookmarks-list"></div>
-        </div>
-        <div class="sidebar-pane" data-sidebar-pane="history">
-          <div class="sidebar-pane-header">
-            <span>History</span>
-            <button class="sidebar-pane-action" id="sidebar-clear-history" title="Clear history">
-              <span class="material-icons-outlined">delete_outline</span>
-            </button>
-          </div>
-          <div class="sidebar-search">
-            <span class="material-icons-outlined">search</span>
-            <input type="text" id="sidebar-history-search" placeholder="Search history…" />
-          </div>
-          <div class="sidebar-list" id="sidebar-history-list"></div>
-        </div>
-        <div class="sidebar-pane" data-sidebar-pane="reading-list">
-          <div class="sidebar-pane-header">
-            <span>Reading List</span>
-            <button class="sidebar-pane-action" id="sidebar-add-reading" title="Add current page">
-              <span class="material-icons-outlined">add</span>
-            </button>
-          </div>
-          <div class="sidebar-list" id="sidebar-reading-list"></div>
-          <div class="sidebar-empty" id="sidebar-reading-empty">
-            <span class="material-icons-outlined">auto_stories</span>
-            <p>Save pages to read later</p>
-          </div>
-        </div>
-        <div class="sidebar-pane" data-sidebar-pane="ai">
-          <div class="sidebar-pane-header">
-            <span>PQC Assistant</span>
           </div>
           <div class="sidebar-ai-content">
             <div class="sidebar-ai-icon">🛡️</div>
-            <p class="sidebar-ai-desc">
-              KryptonBrowser's quantum-secure assistant can help you understand PQC security,
-              analyze page safety, and more.
-            </p>
-            <div class="sidebar-ai-actions">
-              <button class="sidebar-ai-btn" id="ai-summarize">
-                <span class="material-icons-outlined">summarize</span>Summarize page
-              </button>
-              <button class="sidebar-ai-btn" id="ai-security">
-                <span class="material-icons-outlined">security</span>Security analysis
-              </button>
-              <button class="sidebar-ai-btn" id="ai-explain">
-                <span class="material-icons-outlined">psychology</span>Explain PQC
-              </button>
-            </div>
+            <p class="sidebar-ai-desc">Your quantum-safe connection assistant is active.</p>
+          </div>
+        </div>
+        <div class="sidebar-pane" data-sidebar-pane="downloads">
+          <div class="sidebar-pane-header">
+            <h3>Downloads</h3>
+            <button class="sidebar-pane-action sidebar-close" title="Close Sidebar">
+              <span class="material-icons-outlined">close</span>
+            </button>
+          </div>
+          <div class="sidebar-empty">
+            <span class="material-icons-outlined">download</span>
+            <p>No recent downloads</p>
           </div>
         </div>
       </div>

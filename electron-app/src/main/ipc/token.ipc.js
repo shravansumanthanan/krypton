@@ -52,8 +52,6 @@ module.exports = function registerTokenHandlers(ipcMain, services) {
    * Returns: { count: number }
    */
   ipcMain.handle('anon-token-count', async () => {
-    const count =
-      anonTokenProvider && anonTokenProvider.ready ? anonTokenProvider.getTokenCount() : 0;
-    return { count };
+    return anonTokenProvider && anonTokenProvider.ready ? anonTokenProvider.getTokenCount() : 0;
   });
 };

@@ -12,8 +12,13 @@ module.exports = function registerShieldsHandlers(ipcMain, services) {
     try {
       const hostname = new URL(pageUrl).hostname.toLowerCase();
       const siteBlockCounts = siteBlockCountsGetter();
+      const raw =
+        siteBlockCounts.get(hostname) ||
+        siteBlockCounts.get(hostname.replace(/^www\./, '')) ||
+        siteBlockCounts.get('www.' + hostname);
+
       return (
-        siteBlockCounts.get(hostname) || {
+        raw || {
           total: 0,
           ads: 0,
           trackers: 0,

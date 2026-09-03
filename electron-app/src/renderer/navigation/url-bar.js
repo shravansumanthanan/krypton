@@ -15,19 +15,6 @@ export function showAutocomplete(query) {
   const q = query.toLowerCase();
   const results = [];
 
-  // Search history
-  try {
-    const hist = JSON.parse(localStorage.getItem('krypton_history') || '[]');
-    const seen = new Set();
-    hist.forEach((h) => {
-      if (seen.has(h.url)) return;
-      if ((h.title || '').toLowerCase().includes(q) || (h.url || '').toLowerCase().includes(q)) {
-        seen.add(h.url);
-        results.push({ title: h.title || h.url, url: h.url, icon: 'history', type: 'History' });
-      }
-    });
-  } catch (e) {}
-
   // Search bookmarks
   bookmarks.forEach((b) => {
     if (results.some((r) => r.url === b.url)) return;

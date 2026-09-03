@@ -50,35 +50,8 @@ refreshShieldCount();
 
 // Startup behavior
 (function initStartup() {
-  const mode = localStorage.getItem('krypton_startup') || 'newtab';
-  if (mode === 'last-session') {
-    const lastUrl = localStorage.getItem('krypton_last_url');
-    if (lastUrl && lastUrl !== 'krypton://newtab') {
-      createTab(lastUrl);
-    } else {
-      createTab('krypton://newtab');
-    }
-  } else if (mode === 'custom') {
-    const customUrl = localStorage.getItem('krypton_startup_url');
-    if (customUrl && customUrl.trim()) {
-      createTab(
-        customUrl.trim().startsWith('http') ? customUrl.trim() : 'https://' + customUrl.trim(),
-      );
-    } else {
-      createTab('krypton://newtab');
-    }
-  } else {
-    createTab('krypton://newtab');
-  }
+  createTab('krypton://newtab');
 })();
-
-// Save last URL for "continue where you left off"
-window.addEventListener('beforeunload', () => {
-  const tab = getActiveTab();
-  if (tab && tab.url) {
-    localStorage.setItem('krypton_last_url', tab.url);
-  }
-});
 
 // ═══ Global Error Handler for Images ═══
 document.addEventListener(
@@ -116,7 +89,7 @@ document.getElementById('btn-back').addEventListener('click', () => {
     } catch (e) {}
   }
 });
-document.getElementById('btn-forward').addEventListener('click', () => {
+document.getElementById('btn-forward')?.addEventListener('click', () => {
   const tab = getActiveTab();
   if (tab && tab.webview) {
     try {
@@ -124,35 +97,35 @@ document.getElementById('btn-forward').addEventListener('click', () => {
     } catch (e) {}
   }
 });
-document.getElementById('btn-reload').addEventListener('click', () => {
+document.getElementById('btn-reload')?.addEventListener('click', () => {
   const tab = getActiveTab();
   if (!tab || !tab.webview) return;
   const $reloadIcon = document.getElementById('reload-icon');
-  if ($reloadIcon.textContent === 'close') tab.webview.stop();
+  if ($reloadIcon && $reloadIcon.textContent === 'close') tab.webview.stop();
   else tab.webview.reload();
 });
 
-document.getElementById('btn-new-tab').addEventListener('click', () => createTab());
+document.getElementById('btn-new-tab')?.addEventListener('click', () => createTab());
 
-// Bookmark button
-document.getElementById('btn-bookmark').addEventListener('click', (e) => {
+// Bookmark button (if present)
+document.getElementById('btn-bookmark')?.addEventListener('click', (e) => {
   e.stopPropagation();
   toggleBookmark();
 });
 
 // PQC Security Panel button
-document.getElementById('btn-security-panel').addEventListener('click', () => {
+document.getElementById('btn-security-panel')?.addEventListener('click', () => {
   createTab('krypton://pqc-security');
 });
 
 // Extensions button
-document.getElementById('btn-extensions').addEventListener('click', (e) => {
+document.getElementById('btn-extensions')?.addEventListener('click', (e) => {
   e.stopPropagation();
   toggleExtensionsPanel();
 });
 
 // Menu button
-document.getElementById('btn-menu').addEventListener('click', (e) => {
+document.getElementById('btn-menu')?.addEventListener('click', (e) => {
   e.stopPropagation();
   toggleMenu();
 });
@@ -162,46 +135,48 @@ import { zoomLevel, setZoomLevel } from './state/store.js';
 function setZoom(delta) {
   const newLevel = Math.max(25, Math.min(500, zoomLevel + delta));
   setZoomLevel(newLevel);
-  document.getElementById('zoom-level').textContent = newLevel + '%';
+  const zoomEl = document.getElementById('zoom-level');
+  if (zoomEl) zoomEl.textContent = newLevel + '%';
   const tab = getActiveTab();
   if (tab && tab.webview) {
     tab.webview.setZoomFactor(newLevel / 100);
   }
 }
-document.getElementById('zoom-out').addEventListener('click', (e) => {
+document.getElementById('zoom-out')?.addEventListener('click', (e) => {
   e.stopPropagation();
   setZoom(-10);
 });
-document.getElementById('zoom-in').addEventListener('click', (e) => {
+document.getElementById('zoom-in')?.addEventListener('click', (e) => {
   e.stopPropagation();
   setZoom(10);
 });
-document.getElementById('zoom-fullscreen').addEventListener('click', (e) => {
+document.getElementById('zoom-fullscreen')?.addEventListener('click', (e) => {
   e.stopPropagation();
   if (document.fullscreenElement) document.exitFullscreen();
   else document.documentElement.requestFullscreen();
 });
 
-document.getElementById('btn-downloads').addEventListener('click', (e) => {
+document.getElementById('btn-downloads')?.addEventListener('click', (e) => {
   e.stopPropagation();
   toggleDownloadsPanel();
 });
 
-document.getElementById('dl-panel-close').addEventListener('click', () => {
-  document.getElementById('downloads-panel').style.display = 'none';
+document.getElementById('dl-panel-close')?.addEventListener('click', () => {
+  const panel = document.getElementById('downloads-panel');
+  if (panel) panel.style.display = 'none';
 });
 
-document.getElementById('dl-open-downloads-folder').addEventListener('click', () => {
+document.getElementById('dl-open-downloads-folder')?.addEventListener('click', () => {
   if (window.kryptonBrowser) window.kryptonBrowser.openDownloadsFolder();
 });
 
-document.getElementById('btn-shield').addEventListener('click', (e) => {
+document.getElementById('btn-shield')?.addEventListener('click', (e) => {
   e.stopPropagation();
   toggleShieldsPanel();
 });
 
 // Sidebar toggle button
-document.getElementById('btn-sidebar').addEventListener('click', (e) => {
+document.getElementById('btn-sidebar')?.addEventListener('click', (e) => {
   e.stopPropagation();
   toggleSidebar();
 });

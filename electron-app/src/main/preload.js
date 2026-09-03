@@ -3,11 +3,22 @@
 
 const { contextBridge, ipcRenderer } = require('electron');
 
+let webviewPreloadPath = 'preload-webview.js';
+try {
+  const arg = process.argv && process.argv.find((a) => a.startsWith('--webview-preload-path='));
+  if (arg) {
+    webviewPreloadPath = 'file://' + arg.split('=').slice(1).join('=');
+  }
+} catch {
+  /* ignore */
+}
+
 contextBridge.exposeInMainWorld('kryptonBrowser', {
   platform: process.platform,
   version: '1.0.0',
   electronVersion: process.versions.electron,
   chromeVersion: process.versions.chrome,
+  webviewPreloadPath,
 
   // ── Security info ──
   getCertificateInfo: (url) => ipcRenderer.invoke('get-certificate-info', url),
@@ -68,9 +79,9 @@ contextBridge.exposeInMainWorld('kryptonBrowser', {
   onPermissionRequest: (cb) => ipcRenderer.on('permission-request', (e, d) => cb(d)),
   onClearBrowsingData: (cb) => ipcRenderer.on('clear-browsing-data', () => cb()),
   onMenuAction: (cb) => ipcRenderer.on('menu-action', (e, action) => cb(action)),
+  onShieldBlockedUpdate: (cb) => ipcRenderer.on('shield-blocked-update', (e, data) => cb(data)),
 
   // ── History ──
-  exportHistory: (data) => ipcRenderer.invoke('export-history', data),
 
   // ── Fingerprint protection ──
   setFingerprintPolicy: (level) => ipcRenderer.invoke('set-fingerprint-policy', level),
