@@ -53,4 +53,32 @@ describe('PQCCertificateValidator', () => {
     expect(result.warning).toBe(true);
     expect(result.message).toContain('Network error');
   });
+
+  test('resolves OCSP URL from known issuers when ocspUrls is missing', () => {
+    expect(validator._resolveOCSPUrl('ex.com', { issuerName: "Let's Encrypt Authority X3" })).toBe(
+      'http://r3.o.lencr.org',
+    );
+    expect(validator._resolveOCSPUrl('ex.com', { issuerName: 'DigiCert SHA2 Secure Server CA' })).toBe(
+      'http://ocsp.digicert.com',
+    );
+    expect(validator._resolveOCSPUrl('ex.com', { issuerName: 'Sectigo RSA Domain Validation' })).toBe(
+      'http://ocsp.sectigo.com',
+    );
+    expect(validator._resolveOCSPUrl('ex.com', { issuerName: 'GlobalSign Extended Validation' })).toBe(
+      'http://ocsp2.globalsign.com',
+    );
+    expect(validator._resolveOCSPUrl('ex.com', { issuerName: 'Unknown Custom Issuer' })).toBeNull();
+  });
+
+  test('clears cache and parses URLs safely', async () => {
+    validator._cache.set('test.com', { result: 'good', checkedAt: Date.now() });
+    const cached = await validator.checkOCSP('test.com');
+    expect(cached.result).toBe('good');
+
+    validator.clearCache();
+    expect(validator._cache.has('test.com')).toBe(false);
+
+    expect(validator._parseUrl('https://valid.com:8443/ocsp')).not.toBeNull();
+    expect(validator._parseUrl('not-a-url')).toBeNull();
+  });
 });

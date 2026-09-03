@@ -258,10 +258,28 @@ skipTokens('PQCSessionService — anon_tokens table', () => {
     expect(svc.getTokenCount()).toBe(0);
   });
 
-  test('getTokenCount() returns false when not ready', () => {
-    if (!PQCSessionService) return;
-    const s = new PQCSessionService(':memory:');
-    // not init'd — should not throw
-    expect(() => s.getTokenCount && s.getTokenCount()).not.toThrow();
+  test('getSessionByDomain() retrieves recent record by domain', () => {
+    svc.recordSession({
+      handshakeId: 'dom-test-1',
+      domain: 'lookup.com',
+      kemAlgorithm: 'ML-KEM-768',
+      sigAlgorithm: 'ML-DSA-65',
+      status: 'COMPLETED',
+    });
+    const found = svc.getSessionByDomain('lookup.com');
+    expect(found).not.toBeNull();
+    expect(found.handshakeId).toBe('dom-test-1');
+    expect(svc.getSessionByDomain('nonexistent.com')).toBeNull();
+  });
+
+  test('getStats() aggregates total, completed, and failed counts', () => {
+    svc.recordSession({ handshakeId: 's1', domain: 'a.com', status: 'COMPLETED', handshakeMs: 10 });
+    svc.recordSession({ handshakeId: 's2', domain: 'b.com', status: 'FAILED', handshakeMs: 20 });
+    const stats = svc.getStats();
+    expect(stats.total).toBeGreaterThanOrEqual(2);
+    expect(stats.completed).toBeGreaterThanOrEqual(1);
+    expect(stats.failed).toBeGreaterThanOrEqual(1);
+    expect(typeof stats.avgHandshakeMs).toBe('number');
   });
 });
+

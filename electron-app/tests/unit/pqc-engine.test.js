@@ -155,4 +155,41 @@ describe('PQCEngine', () => {
       expect(kp.ms).toBeGreaterThanOrEqual(0);
     });
   });
+
+  describe('Engine Utilities and Session Logging', () => {
+    test('runSelfTest() runs all tests and returns results', () => {
+      const res = PQCEngine.runSelfTest();
+      expect(res).toHaveProperty('allPass');
+      expect(res).toHaveProperty('lines');
+      expect(Array.isArray(res.lines)).toBe(true);
+    });
+
+    test('recordTlsSession() records a session cycle', () => {
+      const res = PQCEngine.recordTlsSession('test-tls.com');
+      expect(res).toHaveProperty('verified');
+      expect(res).toHaveProperty('ms');
+    });
+
+    test('getSessionLog() and getSessionStats() return session data', () => {
+      const logs = PQCEngine.getSessionLog(10);
+      expect(Array.isArray(logs)).toBe(true);
+      const stats = PQCEngine.getSessionStats();
+      expect(stats).toHaveProperty('total');
+    });
+
+    test('hybridKeygenPool() and hybridDeriveSessionKey() generate and derive keys', () => {
+      const pool = PQCEngine.hybridKeygenPool(2);
+      expect(pool.count).toBe(2);
+      expect(pool.keypairs.length).toBe(2);
+      expect(pool.keypairs[0]).toHaveProperty('kemPublicKey');
+      expect(pool.keypairs[0]).toHaveProperty('x25519Public');
+
+      const dummyX25519Hex = '00'.repeat(32);
+      const dummyKemHex = '00'.repeat(32);
+      const derived = PQCEngine.hybridDeriveSessionKey(dummyX25519Hex, dummyKemHex);
+      expect(derived).toHaveProperty('_sessionKey');
+      expect(derived).toHaveProperty('cipherSuite');
+    });
+  });
 });
+
