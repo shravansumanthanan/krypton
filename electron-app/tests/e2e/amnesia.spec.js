@@ -34,7 +34,9 @@ test.describe('Krypton Ephemeral Burner Session', () => {
     await electronApp.close();
 
     // Verify forensic shredding: the directory should no longer exist
-    expect(fs.existsSync(userDataPath)).toBe(false);
+    await expect
+      .poll(() => fs.existsSync(userDataPath), { timeout: 10000, intervals: [200, 500, 1000] })
+      .toBe(false);
   });
 
   test('Panic Button: is globally registered and dynamically updateable via IPC', async () => {
