@@ -117,7 +117,7 @@ jobs:
 
       # Cache the native build to avoid recompiling liboqs on every run
       - name: Cache native PQC build
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             electron-app/native/build
