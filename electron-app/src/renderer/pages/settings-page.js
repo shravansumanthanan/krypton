@@ -83,12 +83,12 @@ export function createSettingsPage(tabId) {
           <h2 class="settings-heading">Appearance</h2>
           <div class="settings-card">
             <div class="settings-row"><div><div class="settings-label">Dark Mode</div><div class="settings-sublabel">KryptonBrowser uses a dark theme by default</div></div><div class="settings-toggle active disabled"></div></div>
-            <div class="settings-row"><div><div class="settings-label">New Tab Wallpaper</div><div class="settings-sublabel">Show a landscape wallpaper on the new tab page</div></div><div class="settings-toggle\${showWallpaper ? ' active' : ''}" id="stgl-wallpaper-\${tabId}"></div></div>
+            <div class="settings-row"><div><div class="settings-label">New Tab Wallpaper</div><div class="settings-sublabel">Show a landscape wallpaper on the new tab page</div></div><div class="settings-toggle${showWallpaper ? ' active' : ''}" id="stgl-wallpaper-${tabId}"></div></div>
             <div class="settings-row"><div><div class="settings-label">Font Size</div><div class="settings-sublabel">Adjust the base font size of the browser UI</div></div>
-              <select class="settings-select" id="stgl-fontsize-\${tabId}">
-                <option value="small"\${fontSize === 'small' ? ' selected' : ''}>Small</option>
-                <option value="medium"\${fontSize === 'medium' ? ' selected' : ''}>Medium</option>
-                <option value="large"\${fontSize === 'large' ? ' selected' : ''}>Large</option>
+              <select class="settings-select" id="stgl-fontsize-${tabId}">
+                <option value="small"${fontSize === 'small' ? ' selected' : ''}>Small</option>
+                <option value="medium"${fontSize === 'medium' ? ' selected' : ''}>Medium</option>
+                <option value="large"${fontSize === 'large' ? ' selected' : ''}>Large</option>
               </select>
             </div>
           </div>
@@ -98,9 +98,9 @@ export function createSettingsPage(tabId) {
         <div class="settings-section" data-section="privacy">
           <h2 class="settings-heading">Privacy & Security</h2>
           <div class="settings-card">
-            <div class="settings-row"><div><div class="settings-label">PQC Encryption</div><div class="settings-sublabel">Use post-quantum cryptography for all connections</div></div><div class="settings-toggle active disabled" id="stgl-pqc-\${tabId}"></div></div>
-            <div class="settings-row"><div><div class="settings-label">Block Third-Party Cookies</div><div class="settings-sublabel">Prevent cross-site tracking through cookies</div></div><div class="settings-toggle\${blockCookies ? ' active' : ''}" id="stgl-cookies-\${tabId}"></div></div>
-            <div class="settings-row"><div><div class="settings-label">Send "Do Not Track"</div><div class="settings-sublabel">Request websites not to track your browsing</div></div><div class="settings-toggle\${sendDNT ? ' active' : ''}" id="stgl-dnt-\${tabId}"></div></div>
+            <div class="settings-row"><div><div class="settings-label">PQC Encryption</div><div class="settings-sublabel">Use post-quantum cryptography for all connections</div></div><div class="settings-toggle active disabled" id="stgl-pqc-${tabId}"></div></div>
+            <div class="settings-row"><div><div class="settings-label">Block Third-Party Cookies</div><div class="settings-sublabel">Prevent cross-site tracking through cookies</div></div><div class="settings-toggle${blockCookies ? ' active' : ''}" id="stgl-cookies-${tabId}"></div></div>
+            <div class="settings-row"><div><div class="settings-label">Send "Do Not Track"</div><div class="settings-sublabel">Request websites not to track your browsing</div></div><div class="settings-toggle${sendDNT ? ' active' : ''}" id="stgl-dnt-${tabId}"></div></div>
           </div>
         </div>
 
@@ -108,7 +108,16 @@ export function createSettingsPage(tabId) {
         <div class="settings-section" data-section="search">
           <h2 class="settings-heading">Search Engine</h2>
           <div class="settings-card">
-            <div class="settings-radio-group">\${searchHtml}</div>
+            <div class="settings-radio-group">${searchHtml}</div>
+          </div>
+        </div>
+
+        <!-- STARTUP -->
+        <div class="settings-section" data-section="startup">
+          <h2 class="settings-heading">On Startup</h2>
+          <div class="settings-card">
+            <div class="settings-row"><div><div class="settings-label">Open New Tab Page</div><div class="settings-sublabel">Open the encrypted post-quantum dashboard on launch</div></div><div class="settings-toggle${startupMode === 'newtab' ? ' active' : ''}"></div></div>
+            <div class="settings-row"><div><div class="settings-label">Restore Startup URL</div><div class="settings-sublabel">${startupUrl || 'Default (krypton://newtab)'}</div></div></div>
           </div>
         </div>
 
@@ -117,7 +126,7 @@ export function createSettingsPage(tabId) {
           <h2 class="settings-heading">Downloads</h2>
           <div class="settings-card">
             <div class="settings-row"><div><div class="settings-label">Download Location</div><div class="settings-sublabel">~/Downloads</div></div></div>
-            <div class="settings-row" style="margin-top:8px"><div><div class="settings-label">Ask where to save</div></div><div class="settings-toggle\${askDownloadLoc ? ' active' : ''}" id="stgl-download-\${tabId}"></div></div>
+            <div class="settings-row" style="margin-top:8px"><div><div class="settings-label">Ask where to save</div></div><div class="settings-toggle${askDownloadLoc ? ' active' : ''}" id="stgl-download-${tabId}"></div></div>
           </div>
         </div>
 
@@ -125,8 +134,8 @@ export function createSettingsPage(tabId) {
         <div class="settings-section" data-section="printing">
           <h2 class="settings-heading">Printing</h2>
           <div class="settings-card">
-            <div class="settings-row"><div><div class="settings-label">Headers and Footers</div></div><div class="settings-toggle\${localStorage.getItem('krypton_print_headers') !== 'false' ? ' active' : ''}" id="stgl-print-headers-\${tabId}"></div></div>
-            <div class="settings-row"><div><div class="settings-label">Background Graphics</div></div><div class="settings-toggle\${localStorage.getItem('krypton_print_bg') === 'true' ? ' active' : ''}" id="stgl-print-bg-\${tabId}"></div></div>
+            <div class="settings-row"><div><div class="settings-label">Headers and Footers</div></div><div class="settings-toggle${localStorage.getItem('krypton_print_headers') !== 'false' ? ' active' : ''}" id="stgl-print-headers-${tabId}"></div></div>
+            <div class="settings-row"><div><div class="settings-label">Background Graphics</div></div><div class="settings-toggle${localStorage.getItem('krypton_print_bg') === 'true' ? ' active' : ''}" id="stgl-print-bg-${tabId}"></div></div>
           </div>
         </div>
 

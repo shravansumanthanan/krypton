@@ -22,12 +22,7 @@ const os = require('os');
 const crypto = require('crypto');
 const log = require('electron-log');
 
-const {
-  initConfig,
-  getConfigSync,
-  setConfigSync,
-  ALLOWED_CONFIG_KEYS,
-} = require('./config/allowed-keys');
+const { initConfig, getConfigSync } = require('./config/allowed-keys');
 const { registerAllHandlers } = require('./ipc');
 
 // ═══ Burner Session Initialization ═══
@@ -40,6 +35,10 @@ app.setPath('userData', burnerTempDir);
 
 let isShredded = false;
 let shredPromise = null;
+
+// Expose for E2E test access via electronApp.evaluate()
+// This is NOT a security risk — it only triggers the same shredding that before-quit does.
+global.__kryptonShredSessionData = null; // set after function definition below
 
 async function secureWipeFilesAsync(dirPath) {
   if (!fs.existsSync(dirPath)) return;
@@ -154,6 +153,8 @@ async function shredSessionDataAsync() {
   })();
   await shredPromise;
 }
+
+global.__kryptonShredSessionData = shredSessionDataAsync;
 
 function sendToActiveWindow(channel, ...args) {
   const focused = BrowserWindow.getFocusedWindow();

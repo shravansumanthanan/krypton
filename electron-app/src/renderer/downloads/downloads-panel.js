@@ -1,4 +1,4 @@
-import { $downloadsPanel, $dlList, downloadItems } from '../state/store.js';
+import { $downloadsPanel, $dlList } from '../state/store.js';
 import { closeAllPanels } from '../shields/shields-controller.js';
 import { formatBytes, formatSpeed, getFileIcon, sanitizeHTML } from '../js/utils.js';
 

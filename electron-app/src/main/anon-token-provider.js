@@ -21,6 +21,7 @@
  */
 
 const crypto = require('crypto');
+const log = require('electron-log');
 
 // Lazy-loaded — PQCEngine is set after addon init
 let _pqcEngine = null;
@@ -55,7 +56,7 @@ const AnonTokenProvider = {
       _signingSecretKey = Buffer.from(kp.secretKey);
       _ready = true;
     } catch (err) {
-      console.error('[AnonTokenProvider] DSA keygen failed:', err.message);
+      log.error('[AnonTokenProvider] DSA keygen failed:', err.message);
       _ready = false;
     }
   },

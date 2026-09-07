@@ -17,6 +17,13 @@ const path                    = require('path');
 
 const MAIN_JS = path.join(__dirname, '../../src/main/main.js');
 
+/** Helper: get IPC handler safely across Electron versions */
+function getIpcHandler(ipcMain, channel) {
+  const h = ipcMain._invokeHandlers;
+  if (!h) return null;
+  return typeof h.get === 'function' ? h.get(channel) : h[channel];
+}
+
 /** Helper: launch the app and wait for UI ready */
 async function launch() {
   const app = await electron.launch({ args: [MAIN_JS] });
@@ -32,7 +39,9 @@ test('Flow 1 — PQC self-test passes via IPC (pqc-self-test)', async () => {
   const { app } = await launch();
   try {
     const result = await app.evaluate(async ({ ipcMain }) => {
-      const handler = ipcMain._invokeHandlers?.get('pqc-self-test');
+      const h = ipcMain._invokeHandlers;
+      const getH = (ch) => (typeof h?.get === 'function' ? h.get(ch) : h?.[ch]);
+      const handler = getH('pqc-self-test') || getH('pqc-selftest');
       if (!handler) return { skipped: true };
       return handler({}, {});
     });
@@ -43,10 +52,10 @@ test('Flow 1 — PQC self-test passes via IPC (pqc-self-test)', async () => {
     }
 
     // Self-test should report all key operations
-    expect(result).toHaveProperty('kemKeygen');
-    expect(result).toHaveProperty('dsaKeygen');
-    expect(result.kemKeygen).toBe(true);
-    expect(result.dsaKeygen).toBe(true);
+    expect(result).toHaveProperty('allPass');
+    expect(result.allPass).toBe(true);
+    expect(result.lines).toBeInstanceOf(Array);
+    expect(result.lines.length).toBeGreaterThan(0);
   } finally {
     await app.close();
   }
@@ -59,7 +68,9 @@ test('Flow 2 — Fingerprint policy → getPolicy round-trip', async () => {
   const { app } = await launch();
   try {
     const setResult = await app.evaluate(async ({ ipcMain }) => {
-      const handler = ipcMain._invokeHandlers?.get('set-fingerprint-policy');
+      const h = ipcMain._invokeHandlers;
+      const getH = (ch) => (typeof h?.get === 'function' ? h.get(ch) : h?.[ch]);
+      const handler = getH('set-fingerprint-policy');
       if (!handler) return null;
       return handler({}, 'strict');
     });
@@ -72,14 +83,18 @@ test('Flow 2 — Fingerprint policy → getPolicy round-trip', async () => {
     expect(setResult).toBe(true);
 
     const getResult = await app.evaluate(async ({ ipcMain }) => {
-      const handler = ipcMain._invokeHandlers?.get('get-fingerprint-policy');
+      const h = ipcMain._invokeHandlers;
+      const getH = (ch) => (typeof h?.get === 'function' ? h.get(ch) : h?.[ch]);
+      const handler = getH('get-fingerprint-policy');
       return handler ? handler({}) : null;
     });
     expect(getResult).toBe('strict');
 
     // Reset to standard
     await app.evaluate(async ({ ipcMain }) => {
-      const handler = ipcMain._invokeHandlers?.get('set-fingerprint-policy');
+      const h = ipcMain._invokeHandlers;
+      const getH = (ch) => (typeof h?.get === 'function' ? h.get(ch) : h?.[ch]);
+      const handler = getH('set-fingerprint-policy');
       if (handler) handler({}, 'standard');
     });
   } finally {
@@ -95,7 +110,9 @@ test('Flow 3 — Anon token issue → redeem lifecycle', async () => {
   try {
     // Issue a token
     const token = await app.evaluate(async ({ ipcMain }) => {
-      const handler = ipcMain._invokeHandlers?.get('anon-token-issue');
+      const h = ipcMain._invokeHandlers;
+      const getH = (ch) => (typeof h?.get === 'function' ? h.get(ch) : h?.[ch]);
+      const handler = getH('anon-token-issue');
       if (!handler) return null;
       return handler({});
     });
@@ -114,7 +131,9 @@ test('Flow 3 — Anon token issue → redeem lifecycle', async () => {
 
     // Count should increase
     const count = await app.evaluate(async ({ ipcMain }) => {
-      const handler = ipcMain._invokeHandlers?.get('anon-token-count');
+      const h = ipcMain._invokeHandlers;
+      const getH = (ch) => (typeof h?.get === 'function' ? h.get(ch) : h?.[ch]);
+      const handler = getH('anon-token-count');
       return handler ? handler({}) : -1;
     });
     expect(count).toBeGreaterThan(0);
@@ -130,7 +149,9 @@ test('Flow 4 — Crypto-agility: getEnabledAlgorithms returns all 6 variants', a
   const { app } = await launch();
   try {
     const algs = await app.evaluate(async ({ ipcMain }) => {
-      const handler = ipcMain._invokeHandlers?.get('pqc-get-algorithms');
+      const h = ipcMain._invokeHandlers;
+      const getH = (ch) => (typeof h?.get === 'function' ? h.get(ch) : h?.[ch]);
+      const handler = getH('pqc-get-algorithms');
       if (!handler) return null;
       return handler({});
     });
@@ -158,7 +179,9 @@ test('Flow 5 — Benchmark service: pqc-benchmark-run-all returns stat shape', a
   const { app } = await launch();
   try {
     const result = await app.evaluate(async ({ ipcMain }) => {
-      const handler = ipcMain._invokeHandlers?.get('pqc-benchmark-run-all');
+      const h = ipcMain._invokeHandlers;
+      const getH = (ch) => (typeof h?.get === 'function' ? h.get(ch) : h?.[ch]);
+      const handler = getH('pqc-benchmark-run-all');
       if (!handler) return null;
       // run with minimal iterations for speed
       return handler({}, { runs: 2 });
@@ -218,7 +241,9 @@ test('Flow 7 — UI smoke: PQC Security page sidebar nav items exist', async () 
   try {
     // Open the PQC security panel via IPC (simulate clicking the shield icon)
     await app.evaluate(async ({ ipcMain }) => {
-      const handler = ipcMain._invokeHandlers?.get('open-pqc-security');
+      const h = ipcMain._invokeHandlers;
+      const getH = (ch) => (typeof h?.get === 'function' ? h.get(ch) : h?.[ch]);
+      const handler = getH('open-pqc-security');
       if (handler) await handler({});
     });
 

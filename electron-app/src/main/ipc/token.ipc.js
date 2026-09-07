@@ -11,7 +11,7 @@
  * Security: Only nonce + signature cross IPC. sessionId never leaves main.
  */
 module.exports = function registerTokenHandlers(ipcMain, services) {
-  const { anonTokenProvider, pqcSessionService } = services;
+  const { anonTokenProvider } = services;
 
   /**
    * Issue an anonymous token tied to an internal session ID.

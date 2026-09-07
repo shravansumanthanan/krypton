@@ -1,22 +1,10 @@
 'use strict';
 const { session } = require('electron');
-const fs = require('fs');
-const log = require('electron-log');
 const { getConfigSync, setConfigSync } = require('../config/allowed-keys');
 
 module.exports = function registerSessionHandlers(ipcMain, services) {
-  const {
-    pqcEngine,
-    pqcSessionService,
-    pqcCertValidator,
-    mainWindowGetter,
-    globalShortcut,
-    dialog,
-    shell,
-    app,
-    triggerPanic,
-    shredSessionDataAsync,
-  } = services;
+  const { pqcEngine, pqcCertValidator, globalShortcut, triggerPanic, shredSessionDataAsync } =
+    services;
 
   // PQC Session Log — now backed by SQLite via pqcEngine delegation
   ipcMain.handle('pqc-get-sessions', async () => pqcEngine.getSessionLog(100));

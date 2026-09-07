@@ -37,10 +37,6 @@ const INDIGENOUS_CAS = [
   { name: 'eMudhra Class 3 CA', org: 'eMudhra Limited', algorithm: 'RSA-4096', pqc: false },
 ];
 
-function now() {
-  return new Date().toISOString().slice(11, 23);
-}
-
 export function createPqcSecurityPage(tabId) {
   const container = document.createElement('div');
   container.className = 'new-tab-page pqc-page';

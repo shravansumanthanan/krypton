@@ -2,9 +2,7 @@
 
 const { getConfigSync, setConfigSync, ALLOWED_CONFIG_KEYS } = require('../config/allowed-keys');
 
-module.exports = function registerConfigHandlers(ipcMain, services) {
-  const { configPath } = services;
-
+module.exports = function registerConfigHandlers(ipcMain) {
   // Config sync
   ipcMain.handle('get-config', async (e, key, def) => {
     if (typeof key !== 'string' || key.length > 64) return def;

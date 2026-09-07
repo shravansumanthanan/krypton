@@ -1,5 +1,4 @@
 import { $urlInput, bookmarks } from '../state/store.js';
-import { getSearchUrl } from '../pages/settings-page.js';
 import { navigateActiveTab } from './nav-controller.js';
 import { getActiveTab } from '../tabs/tab-manager.js';
 import { sanitizeHTML } from '../js/utils.js';

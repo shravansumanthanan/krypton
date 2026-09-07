@@ -3,8 +3,11 @@
 module.exports = function registerPqcHandlers(ipcMain, services) {
   const { pqcEngine } = services;
 
-  // PQC Engine — Self-Test
+  // PQC Engine — Self-Test (both aliases supported)
   ipcMain.handle('pqc-selftest', async () => {
+    return pqcEngine.runSelfTest();
+  });
+  ipcMain.handle('pqc-self-test', async () => {
     return pqcEngine.runSelfTest();
   });
 

@@ -32,10 +32,15 @@ test.describe('Krypton Ephemeral Burner Session', () => {
     fs.writeFileSync(dummyFile, 'dummy data');
     expect(fs.existsSync(dummyFile)).toBe(true);
 
-    // Execute forensic shredding via IPC handler
+    // Execute forensic shredding directly in the main process
     await electronApp.evaluate(async ({ ipcMain }) => {
-      const handler = ipcMain._invokeHandlers?.get('shred-session-data');
-      if (handler) await handler({});
+      if (typeof global.__kryptonShredSessionData === 'function') {
+        await global.__kryptonShredSessionData();
+      } else {
+        const handlers = ipcMain._invokeHandlers;
+        const handler = typeof handlers?.get === 'function' ? handlers.get('shred-session-data') : handlers?.['shred-session-data'];
+        if (handler) await handler({});
+      }
     });
 
     // Close the app gracefully

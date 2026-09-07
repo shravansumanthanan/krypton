@@ -3,7 +3,7 @@
 const fingerprintEnforcer = require('../fingerprint-enforcer');
 
 module.exports = function registerSecurityHandlers(ipcMain, services) {
-  const { pqcHandshakeService, pqcCertValidator, pqcEngine, verifiedCertificatesGetter } = services;
+  const { pqcEngine, verifiedCertificatesGetter } = services;
 
   // Certificate info
   ipcMain.handle('get-certificate-info', async (e, url) => {

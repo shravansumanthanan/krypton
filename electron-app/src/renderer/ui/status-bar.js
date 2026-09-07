@@ -1,9 +1,4 @@
-import {
-  $shieldCount,
-  $shieldBadgeWrap,
-  shieldTotalBlocked,
-  setShieldTotalBlocked,
-} from '../state/store.js';
+import { $shieldCount, $shieldBadgeWrap, setShieldTotalBlocked } from '../state/store.js';
 import { getActiveTab } from '../tabs/tab-manager.js';
 import { showSettingsToast } from '../pages/settings-page.js';
 
