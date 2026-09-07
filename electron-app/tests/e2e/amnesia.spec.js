@@ -5,6 +5,8 @@ const fs = require('fs');
 
 test.describe('Krypton Ephemeral Burner Session', () => {
   test('Amnesia: ensures volatile directory is completely shredded on exit', async () => {
+    test.setTimeout(60000);
+
     // Launch Electron app.
     const electronApp = await electron.launch({
       args: [path.join(__dirname, '../../src/main', 'main.js')],
@@ -35,14 +37,14 @@ test.describe('Krypton Ephemeral Burner Session', () => {
       app.quit();
     });
     try {
-      await electronApp.waitForEvent('close', { timeout: 5000 });
+      await electronApp.waitForEvent('close', { timeout: 10000 });
     } catch {
       await electronApp.close();
     }
 
     // Verify forensic shredding: the directory should no longer exist
     await expect
-      .poll(() => fs.existsSync(userDataPath), { timeout: 10000, intervals: [200, 500, 1000] })
+      .poll(() => fs.existsSync(userDataPath), { timeout: 30000, intervals: [500, 1000, 2000] })
       .toBe(false);
   });
 

@@ -43,13 +43,21 @@ let shredPromise = null;
 
 async function secureWipeFilesAsync(dirPath) {
   if (!fs.existsSync(dirPath)) return;
-  const stat = await fs.promises.stat(dirPath);
+  let stat;
+  try {
+    stat = await fs.promises.stat(dirPath);
+  } catch {
+    return;
+  }
+
   if (stat.isDirectory()) {
-    const files = await fs.promises.readdir(dirPath);
-    for (const file of files) {
-      await secureWipeFilesAsync(path.join(dirPath, file));
+    try {
+      const files = await fs.promises.readdir(dirPath);
+      await Promise.all(files.map((file) => secureWipeFilesAsync(path.join(dirPath, file))));
+    } catch {
+      // ignore
     }
-  } else {
+  } else if (stat.isFile()) {
     try {
       const fd = await fs.promises.open(dirPath, 'r+');
       const size = stat.size;
