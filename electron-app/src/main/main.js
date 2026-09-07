@@ -928,6 +928,9 @@ app.on('will-quit', () => {
 app.on('before-quit', (e) => {
   if (isQuitting) return; // Allow quit
   e.preventDefault(); // Prevent immediate quit
+  BrowserWindow.getAllWindows().forEach((win) => {
+    if (!win.isDestroyed()) win.destroy();
+  });
   shredSessionDataAsync().then(() => {
     // Close SQLite DB gracefully before quit
     if (pqcSessionService) {
@@ -935,7 +938,7 @@ app.on('before-quit', (e) => {
       log.info('[KryptonBrowser] PQC session DB closed.');
     }
     isQuitting = true;
-    app.quit();
+    app.exit(0);
   });
 });
 
