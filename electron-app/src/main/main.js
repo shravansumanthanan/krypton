@@ -45,7 +45,7 @@ async function secureWipeFilesAsync(dirPath) {
   if (!fs.existsSync(dirPath)) return;
   let stat;
   try {
-    stat = await fs.promises.stat(dirPath);
+    stat = await fs.promises.lstat(dirPath);
   } catch {
     return;
   }
@@ -54,9 +54,16 @@ async function secureWipeFilesAsync(dirPath) {
     try {
       const files = await fs.promises.readdir(dirPath);
       await Promise.all(files.map((file) => secureWipeFilesAsync(path.join(dirPath, file))));
+      try {
+        await fs.promises.rmdir(dirPath);
+      } catch {}
     } catch {
       // ignore
     }
+  } else if (stat.isSymbolicLink() || stat.isSocket() || stat.isFIFO()) {
+    try {
+      await fs.promises.unlink(dirPath);
+    } catch {}
   } else if (stat.isFile()) {
     try {
       const fd = await fs.promises.open(dirPath, 'r+');
@@ -83,8 +90,15 @@ async function secureWipeFilesAsync(dirPath) {
       const randomName = crypto.randomBytes(16).toString('hex');
       const newPath = path.join(path.dirname(dirPath), randomName);
       await fs.promises.rename(dirPath, newPath);
+      try {
+        await fs.promises.unlink(newPath);
+      } catch {
+        await fs.promises.unlink(dirPath);
+      }
     } catch (e) {
-      // ignore
+      try {
+        await fs.promises.unlink(dirPath);
+      } catch {}
     }
   }
 }
@@ -98,11 +112,24 @@ async function shredSessionDataAsync() {
       try {
         log.info(`[KryptonBrowser] Forensic wipe starting for burner session at ${burnerTempDir}`);
         await secureWipeFilesAsync(burnerTempDir);
-        fs.rmSync(burnerTempDir, { recursive: true, force: true });
+        fs.rmSync(burnerTempDir, {
+          recursive: true,
+          force: true,
+          maxRetries: 10,
+          retryDelay: 100,
+        });
         isShredded = true;
         log.info('[KryptonBrowser] Forensic wipe complete.');
       } catch (e) {
         log.error(`[KryptonBrowser] Failed to shred session data: ${e.message}`);
+        try {
+          fs.rmSync(burnerTempDir, {
+            recursive: true,
+            force: true,
+            maxRetries: 5,
+            retryDelay: 100,
+          });
+        } catch {}
       }
     })();
     await shredPromise;
