@@ -107,33 +107,52 @@ async function shredSessionDataAsync() {
   if (isShredded) return;
   if (shredPromise) return shredPromise;
 
-  if (fs.existsSync(burnerTempDir)) {
-    shredPromise = (async () => {
+  const targets = new Set();
+  if (burnerTempDir) {
+    targets.add(burnerTempDir);
+    try {
+      targets.add(fs.realpathSync(burnerTempDir));
+    } catch {}
+  }
+  try {
+    const userPath = app.getPath('userData');
+    if (userPath && userPath.includes('krypton-burner-')) {
+      targets.add(userPath);
       try {
-        log.info(`[KryptonBrowser] Forensic wipe starting for burner session at ${burnerTempDir}`);
-        await secureWipeFilesAsync(burnerTempDir);
-        fs.rmSync(burnerTempDir, {
-          recursive: true,
-          force: true,
-          maxRetries: 10,
-          retryDelay: 100,
-        });
-        isShredded = true;
-        log.info('[KryptonBrowser] Forensic wipe complete.');
-      } catch (e) {
-        log.error(`[KryptonBrowser] Failed to shred session data: ${e.message}`);
+        targets.add(fs.realpathSync(userPath));
+      } catch {}
+    }
+  } catch {}
+
+  shredPromise = (async () => {
+    for (const target of targets) {
+      if (fs.existsSync(target)) {
         try {
-          fs.rmSync(burnerTempDir, {
+          log.info(`[KryptonBrowser] Forensic wipe starting for burner session at ${target}`);
+          await secureWipeFilesAsync(target);
+          fs.rmSync(target, {
             recursive: true,
             force: true,
-            maxRetries: 5,
+            maxRetries: 10,
             retryDelay: 100,
           });
-        } catch {}
+        } catch (e) {
+          log.error(`[KryptonBrowser] Failed to shred session data at ${target}: ${e.message}`);
+          try {
+            fs.rmSync(target, {
+              recursive: true,
+              force: true,
+              maxRetries: 5,
+              retryDelay: 100,
+            });
+          } catch {}
+        }
       }
-    })();
-    await shredPromise;
-  }
+    }
+    isShredded = true;
+    log.info('[KryptonBrowser] Forensic wipe complete.');
+  })();
+  await shredPromise;
 }
 
 function sendToActiveWindow(channel, ...args) {
@@ -935,6 +954,7 @@ app.whenReady().then(async () => {
     shell,
     app,
     triggerPanic,
+    shredSessionDataAsync,
   });
   createMenu();
   createWindow();

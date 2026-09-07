@@ -15,6 +15,7 @@ module.exports = function registerSessionHandlers(ipcMain, services) {
     shell,
     app,
     triggerPanic,
+    shredSessionDataAsync,
   } = services;
 
   // PQC Session Log — now backed by SQLite via pqcEngine delegation
@@ -40,6 +41,14 @@ module.exports = function registerSessionHandlers(ipcMain, services) {
     } catch {
       return false;
     }
+  });
+
+  ipcMain.handle('shred-session-data', async () => {
+    if (typeof shredSessionDataAsync === 'function') {
+      await shredSessionDataAsync();
+      return true;
+    }
+    return false;
   });
 
   ipcMain.handle('set-panic-shortcut', async (e, shortcutStr) => {
