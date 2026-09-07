@@ -30,8 +30,15 @@ test.describe('Krypton Ephemeral Burner Session', () => {
     fs.writeFileSync(dummyFile, 'dummy data');
     expect(fs.existsSync(dummyFile)).toBe(true);
 
-    // Close the app gracefully
-    await electronApp.close();
+    // Close the app gracefully via app.quit() so before-quit hook runs
+    await electronApp.evaluate(({ app }) => {
+      app.quit();
+    });
+    try {
+      await electronApp.waitForEvent('close', { timeout: 5000 });
+    } catch {
+      await electronApp.close();
+    }
 
     // Verify forensic shredding: the directory should no longer exist
     await expect

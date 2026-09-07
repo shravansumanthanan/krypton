@@ -952,3 +952,13 @@ process.on('uncaughtException', (err) => {
 process.on('unhandledRejection', (reason, promise) => {
   log.error('[KryptonBrowser] CRITICAL: Unhandled Rejection at:', promise, 'reason:', reason);
 });
+
+function handleShutdownSignal() {
+  if (isQuitting) return;
+  shredSessionDataAsync().finally(() => {
+    isQuitting = true;
+    app.exit(0);
+  });
+}
+process.on('SIGTERM', handleShutdownSignal);
+process.on('SIGINT', handleShutdownSignal);
